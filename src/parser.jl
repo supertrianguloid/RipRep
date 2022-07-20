@@ -28,8 +28,6 @@ function load_simulation(sims, runno)
     end
     return run    
 end
-sims = initialise()
-load_simulation(sims, 1)
 
 function measure_acceptance(ensemble)
     Nₐ = sum((ensemble.name .== "HMC") .& (ensemble.output .== "Configuration accepted."))
