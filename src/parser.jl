@@ -88,20 +88,23 @@ end
 
 function extract_data_from_process(process::DataFrame)
     observables = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
-    confs = split(join(_extract_output(process, "MAIN"), '\n'), r"Trajectory #" * INTEGER_REGEX * "...")[2:end]
-    
-    df = DataFrame([Int64[], Int64[], Float64[], fill(Vector{Union{Vector{Float64}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :plaquette, observables...])
+    confs = split(join(process[:, :output], '\n'), r"Trajectory #" * INTEGER_REGEX * "...")[2:end]
+
+    df = DataFrame([Int64[], Int64[], Bool[], Float64[], fill(Vector{Union{Vector{Float64}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :accepted, :plaquette, observables...])
     for i in confs
         d = []
         push!(d, parse(Float64, only(match(r"Plaquette: " * FLOAT_REGEX, i).captures)))
+
+        status = (only(match(r"Configuration (rejected|accepted).", i).captures) == "accepted")
+
         for obs in observables
             try
-            push!(d, parse.(Float64, split(only(match(String(obs) * r"=(.*)", i).captures), ' ', keepempty=false)))
+                push!(d, parse.(Float64, split(only(match(String(obs) * r"=(.*)", i).captures), ' ', keepempty=false)))
             catch e
                 push!(d, missing)
             end
         end
-        push!(df, [0,0, d...])
+        push!(df, [0,0, status, d...])
     end
     return df
 end
