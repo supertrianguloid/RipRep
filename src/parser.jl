@@ -42,7 +42,7 @@ function load_processes(run_no)
     p = split(output, "[SYSTEM][0]Gauge group: SU(2)\n", keepempty = false)
     processes = Vector{DataFrame}(undef, length(p))
     # Populate a vector of DataFrames for each process
-    for i in 1:length(p)
+    for i in eachindex(p)
         processes[i] = _convert_outformat_to_dataframe(p[i])
     end
     return processes
@@ -56,7 +56,7 @@ function parse_output_file(run_no)
 
     process_metadata = Array{DataFrame}(undef, length(processes))
 
-    for i in 1:length(processes)
+    for i in eachindex(processes)
         process_metadata[i] = process_metadata_to_dataframe(processes[i])
         process_metadata[i][1,:process_no] = i
     end
