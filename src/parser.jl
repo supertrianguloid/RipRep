@@ -63,7 +63,7 @@ function parse_output_file(run_no)
 
     process_metadata = vcat(process_metadata...)
 
-    return global_metadata, process_metadata
+    return global_metadata, process_metadata, processes
 end
 
 function _check_integrator(p_meta::DataFrame)
@@ -92,6 +92,8 @@ end
 function process_metadata_to_dataframe(process::DataFrame)
     df = DataFrame(process_no=Int64[],
         warnings=Any[],
+        starting_conf=Integer[],
+        no_confs=Integer[],
         int_l0_int=String[],
         int_l0_steps=Integer[],
         int_l1_int=String[],
@@ -121,8 +123,15 @@ function process_metadata_to_dataframe(process::DataFrame)
         steps[i[1]] = parse(Int, i[3])
     end
 
+    # Extract number of configurations
+
+    starting_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", extract_output(process, "MAIN") |> join).captures[1])
+    ending_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", extract_output(process, "MAIN") |> reverse |> join).captures[1])
+
     push!(df, (process_no=0,
         warnings=warnings,
+        starting_conf = starting_conf,
+        no_confs = ending_conf - starting_conf + 1,
         int_l0_int=ints["0"],
         int_l0_steps=steps["0"],
         int_l1_int=ints["1"],
@@ -130,7 +139,18 @@ function process_metadata_to_dataframe(process::DataFrame)
         int_l2_int=ints["2"],
         int_l2_steps=steps["2"],
     ))
+
+    # Extract configurations
+    split(join(extract_output(process, "MAIN"), '\n'), r"")
     return df
+end
+
+function run_summary(run_no)
+    println(GLOBAL_SIMS[run_no, :])
+    g_meta, p_meta, processes = parse_output_file(run_no)
+    print("\n")
+    println("Number of processes: ", nrow(p_meta))
+    println("Integrator parameters change in process numbers: ", _check_integrator(p_meta))
 end
 
 initialise()
