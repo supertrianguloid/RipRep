@@ -63,7 +63,47 @@ function parse_output_file(run_no)
 
     process_metadata = vcat(process_metadata...)
 
-    return global_metadata, process_metadata, processes
+    data = Array{DataFrame}(undef, nrow(p_meta))
+
+    for i in eachindex(processes)
+        data[i] = extract_data_from_process(processes[i])
+        data[i][:, :proc_no] .= i
+    end
+
+    data = vcat(data...)
+
+    for i in 1:nrow(data)
+        data[i, :conf_no] = i
+    end
+
+    md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
+
+
+    if md != []
+        @info "Missing data in configuration $md"
+    end
+
+    return global_metadata, process_metadata, data
+end
+
+function extract_data_from_process(process::DataFrame)
+    observables = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
+    confs = split(join(_extract_output(process, "MAIN"), '\n'), r"Trajectory #" * INTEGER_REGEX * "...")[2:end]
+    
+    df = DataFrame([Int64[], Int64[], Float64[], fill(Vector{Union{Vector{Float64}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :plaquette, observables...])
+    for i in confs
+        d = []
+        push!(d, parse(Float64, only(match(r"Plaquette: " * FLOAT_REGEX, i).captures)))
+        for obs in observables
+            try
+            push!(d, parse.(Float64, split(only(match(String(obs) * r"=(.*)", i).captures), ' ', keepempty=false)))
+            catch e
+                push!(d, missing)
+            end
+        end
+        push!(df, [0,0, d...])
+    end
+    return df
 end
 
 function _check_integrator(p_meta::DataFrame)
@@ -81,6 +121,11 @@ function _convert_outformat_to_dataframe(process::AbstractString)
         push!(run, m)
     end
     return run
+end
+
+function _extract_output(proc, name)
+    p = proc[proc.name.==name, :output]
+    return p == String[] ? nothing : p
 end
 
 function extract_global_metadata(first_process::DataFrame)
@@ -101,19 +146,14 @@ function process_metadata_to_dataframe(process::DataFrame)
         int_l2_int=String[],
         int_l2_steps=Integer[]
     )
-    # Helper function
-    function extract_output(proc, name)
-        p = proc[proc.name.==name, :output]
-        return p == String[] ? nothing : p
-    end
 
     # Extract warnings
-    warnings = extract_output(process, "WARNING")
+    warnings = _extract_output(process, "WARNING")
 
     # Extract integrator parameters
     integrator = []
     integrator_regex = r"Level " * INTEGER_REGEX * r": type = (o2mn|o4nm), steps = " * INTEGER_REGEX
-    for i in extract_output(process, "INTEGRATOR")
+    for i in _extract_output(process, "INTEGRATOR")
         push!(integrator, match(integrator_regex, i).captures)
     end
     ints = Dict()
@@ -125,8 +165,8 @@ function process_metadata_to_dataframe(process::DataFrame)
 
     # Extract number of configurations
 
-    starting_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", extract_output(process, "MAIN") |> join).captures[1])
-    ending_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", extract_output(process, "MAIN") |> reverse |> join).captures[1])
+    starting_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> join).captures[1])
+    ending_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> reverse |> join).captures[1])
 
     push!(df, (process_no=0,
         warnings=warnings,
@@ -141,7 +181,7 @@ function process_metadata_to_dataframe(process::DataFrame)
     ))
 
     # Extract configurations
-    split(join(extract_output(process, "MAIN"), '\n'), r"")
+    split(join(_extract_output(process, "MAIN"), '\n'), r"")
     return df
 end
 
