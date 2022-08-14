@@ -76,17 +76,6 @@ function parse_output_file(run_no)
 
     data = vcat(data...)
 
-    # for i in 1:nrow(data)
-    #     data[i, :conf_no] = i
-    # end
-
-    md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
-
-
-    if md != []
-        @info "Missing data in configuration $md"
-    end
-
     return global_metadata, process_metadata, data
 end
 
@@ -241,6 +230,13 @@ function load_run(run_no)
     println("Number of processes: ", nrow(p_meta))
     println("Total number of configurations: ", nrow(data))
     println("Integrator parameters change in process numbers: ", _check_integrator(p_meta))
+
+    md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
+
+    if md != []
+        println("Missing data in configuration $md")
+    end
+
     return data
 end
 
