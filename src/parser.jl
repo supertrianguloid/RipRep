@@ -5,8 +5,12 @@ using DataFrames
 
 @info "This is " * projectname() * " running from " * projectdir()
 
+FLOAT_REGEX_FULL = r"([+-]?(\d+([.]\d*)?([eE][+-]?\d+)?|[.]\d+([eE][+-]?\d+)?))"
 FLOAT_REGEX = r"([-+]?[0-9]*\.?[0-9]*)"
+
 INTEGER_REGEX = r"([0-9]+)"
+TIME_REGEX = r"Trajectory #" * INTEGER_REGEX * r": generated in \[" * INTEGER_REGEX * " sec " * INTEGER_REGEX * r" usec\]"
+CONF_REGEX = r"\[DeltaS = " * FLOAT_REGEX_FULL * r"\]\[" * r"exp\(-DS\) = " * FLOAT_REGEX_FULL * r"\]"
 
 GLOBAL_SIMS = DataFrame(β=Float64[],
     Cˢʷ=Float64[],
@@ -63,7 +67,7 @@ function parse_output_file(run_no)
 
     process_metadata = vcat(process_metadata...)
 
-    data = Array{DataFrame}(undef, nrow(p_meta))
+    data = Array{DataFrame}(undef, nrow(process_metadata))
 
     for i in eachindex(processes)
         data[i] = extract_data_from_process(processes[i])
@@ -88,14 +92,43 @@ end
 
 function extract_data_from_process(process::DataFrame)
     observables = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
-    confs = split(join(process[:, :output], '\n'), r"Trajectory #" * INTEGER_REGEX * "...")[2:end]
 
-    df = DataFrame([Int64[], Int64[], Bool[], Float64[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :accepted, :plaquette, observables...])
-    for i in confs
+    outer = []
+    inner = []
+
+    for i in process[:, :output]
+        if(match(CONF_REGEX, i) !== nothing)
+            push!(outer, inner)
+            inner = []
+        end
+        push!(inner, i)
+    end
+
+    confs = [join(i, '\n') for i in outer]
+
+    df = DataFrame([Int64[], Int64[], Float64[], Union{Bool, Missing}[], Union{Float64, Missing}[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :time, :accepted, :plaquette, observables...])
+    for i in confs[2:end]
+
+        time = missing
+        try
+            t = match(TIME_REGEX, i).captures
+            time = parse(Int, t[2]) + 1e-6*parse(Int, t[3])
+        catch e
+            println(i)
+        end
+
         d = []
-        push!(d, parse(Float64, only(match(r"Plaquette: " * FLOAT_REGEX, i).captures)))
+        try
+            push!(d, parse(Float64, only(match(r"Plaquette: " * FLOAT_REGEX, i).captures)))
+        catch e
+            push!(d, missing)
+        end
 
-        status = (only(match(r"Configuration (rejected|accepted).", i).captures) == "accepted")
+        status = missing
+        try
+            status = (only(match(r"Configuration (rejected|accepted).", i).captures) == "accepted")
+        catch e
+        end
 
         for obs in observables
             try
@@ -105,7 +138,7 @@ function extract_data_from_process(process::DataFrame)
                 push!(d, missing)
             end
         end
-        push!(df, [0,0, status, d...])
+        push!(df, [0, 0, time, status, d...])
     end
     return df
 end
@@ -141,8 +174,8 @@ end
 function process_metadata_to_dataframe(process::DataFrame)
     df = DataFrame(process_no=Int64[],
         warnings=Any[],
-        starting_conf=Integer[],
-        no_confs=Integer[],
+        starting_conf=Union{Integer, Missing}[],
+        no_confs=Union{Integer, Missing}[],
         int_l0_int=String[],
         int_l0_steps=Integer[],
         int_l1_int=String[],
@@ -156,9 +189,13 @@ function process_metadata_to_dataframe(process::DataFrame)
 
     # Extract integrator parameters
     integrator = []
-    integrator_regex = r"Level " * INTEGER_REGEX * r": type = (o2mn|o4nm), steps = " * INTEGER_REGEX
+    integrator_regex = r"Level " * INTEGER_REGEX * r": type = (o2mn|o4mn), steps = " * INTEGER_REGEX
     for i in _extract_output(process, "INTEGRATOR")
-        push!(integrator, match(integrator_regex, i).captures)
+        try
+            push!(integrator, match(integrator_regex, i).captures)
+        catch e
+            @info i
+        end
     end
     ints = Dict()
     steps = Dict()
@@ -168,10 +205,14 @@ function process_metadata_to_dataframe(process::DataFrame)
     end
 
     # Extract number of configurations
-
-    starting_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> join).captures[1])
-    ending_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> reverse |> join).captures[1])
-
+    starting_conf = missing
+    ending_conf = missing
+    try
+        starting_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> join).captures[1])
+        ending_conf = parse(Int, match(r"Trajectory #" * INTEGER_REGEX * "...", _extract_output(process, "MAIN") |> reverse |> join).captures[1])
+    catch e
+        print(process)
+    end
     push!(df, (process_no=0,
         warnings=warnings,
         starting_conf = starting_conf,
@@ -189,12 +230,13 @@ function process_metadata_to_dataframe(process::DataFrame)
     return df
 end
 
-function run_summary(run_no)
-    println(GLOBAL_SIMS[run_no, :])
-    g_meta, p_meta, processes = parse_output_file(run_no)
+function load_run(run_no)
+    g_meta, p_meta, data = parse_output_file(run_no)
     print("\n")
     println("Number of processes: ", nrow(p_meta))
+    println("Total number of configurations: ", nrow(data))
     println("Integrator parameters change in process numbers: ", _check_integrator(p_meta))
+    return data
 end
 
 initialise()
