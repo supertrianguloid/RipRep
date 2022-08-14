@@ -76,9 +76,9 @@ function parse_output_file(run_no)
 
     data = vcat(data...)
 
-    for i in 1:nrow(data)
-        data[i, :conf_no] = i
-    end
+    # for i in 1:nrow(data)
+    #     data[i, :conf_no] = i
+    # end
 
     md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
 
@@ -103,6 +103,7 @@ function extract_data_from_process(process::DataFrame)
         end
         push!(inner, i)
     end
+    push!(outer, inner)
 
     confs = [join(i, '\n') for i in outer]
 
@@ -110,9 +111,11 @@ function extract_data_from_process(process::DataFrame)
     for i in confs[2:end]
 
         time = missing
+        confno = missing
         try
             t = match(TIME_REGEX, i).captures
             time = parse(Int, t[2]) + 1e-6*parse(Int, t[3])
+            confno = parse(Int, t[1])
         catch e
             println(i)
         end
@@ -132,13 +135,15 @@ function extract_data_from_process(process::DataFrame)
 
         for obs in observables
             try
+                # v = parse.(Float64, split(only(match(r"conf #" * String(confno) * r".*" * String(obs) * r"=(.*)", i).captures), ' ', keepempty=false))
                 v = parse.(Float64, split(only(match(String(obs) * r"=(.*)", i).captures), ' ', keepempty=false))
                 push!(d, OffsetArray(v, 0:length(v) - 1))
+                
             catch e
                 push!(d, missing)
             end
         end
-        push!(df, [0, 0, time, status, d...])
+        push!(df, [confno, 0, time, status, d...])
     end
     return df
 end
