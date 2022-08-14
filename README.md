@@ -1,16 +1,11 @@
 # RipRep
 
-This code base is using the Julia Language and [DrWatson](https://juliadynamics.github.io/DrWatson.jl/stable/)
-to make a reproducible scientific project named
-> RipRep
+Reproducible *HiRep* analysis, including a reasonably sophisticated parser.
 
-It is authored by Laurence Sebastian Bowes.
+To reproduce this project, do the following:
 
-To (locally) reproduce this project, do the following:
-
-0. Download this code base. Notice that raw data are typically not included in the
-   git-history and may need to be downloaded independently.
-1. Open a Julia console and do:
+0. Download this code base. Put raw *HiRep* files into `data/`
+1. Open a Julia console and run:
    ```
    julia> using Pkg
    julia> Pkg.add("DrWatson") # install globally, for using `quickactivate`
