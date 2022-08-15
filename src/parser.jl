@@ -241,30 +241,3 @@ function load_run(run_no)
 end
 
 initialise()
-
-
-# function measure_acceptance(ensemble)
-#     Nₐ = sum((ensemble.name .== "HMC") .& (ensemble.output .== "Configuration accepted."))
-#     Nᵣ = sum((ensemble.name .== "HMC") .& (ensemble.output .== "Configuration rejected."))
-#     return Nₐ/(Nₐ + Nᵣ)
-# end
-
-# function parse_process(process)
-
-# end
-
-
-
-# function parse_process(ensemble)
-#     meas = DataFrame()
-#     observables = Set()
-#     for line in ensemble[ensemble.name .== "MAIN", :].output
-#         m = match(r"^conf #[0-9]+ mass=" * fl * r" DEFAULT_SEMWALL TRIPLET ([a-zA-Z0-9_]+)=", line)
-#         if typeof(m) != Nothing
-#             push!(observables, m.captures[2])
-#         end
-#     end
-#     return observables
-# end
-
-
