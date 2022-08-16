@@ -12,8 +12,8 @@ function acceptance(data)
     return sum(data[:, :accepted])/nrow(data)
 end
 
-function thermalise(data, ntherm)
-    return data[ntherm:end, :]
+function thermalise(ens, ntherm)
+    return Ensemble(ens.global_metadata, ens.run_metadata, ens.data[ntherm:end, :])
 end
 
 function bin(data, binsize, method)
@@ -25,13 +25,13 @@ function bin(data, binsize, method)
     end
 end
 
-function plot_plaquette(ens)
-    plot(1:nrow(ens.data), ens.data[:, :plaquette], label="Plaquette", title = only(ens.global_metadata.path))
-    xlabel!("Conf #")
-end
-function plot_plaquette(ens, range)
-    plot(range, ens.data[range, :plaquette], label="Plaquette", title = only(ens.global_metadata.path))
-    xlabel!("Conf #")
+function plot_plaquette(ens, range = :default)
+    if range == :default
+        range = ens.data[:, :conf_no]
+    end
+
+    plot(range, ens.data[in.(ens.data.conf_no, (range,)), :plaquette], label="Plaquette", title = _ensemble_to_latex_string(ens))
+    xlabel!("Configuration #")
 end
 
 function plot_correlator(ens, corr, log=true)
@@ -65,8 +65,8 @@ function plot_fit(ens, correlator, trange, nstates = 1, log = true)
     fit = fit_cosh(ens, correlator, trange, 1)
     corr = ens.data[:, correlator]
     model(τ, params) = _cosh_model(nstates, T, τ, params)
-    plot(0:length(mean(corr)) - 1, parent(mean(corr)), yerr = parent(std(corr, corrected=true)/sqrt(length(corr))), yaxis = log ? :log : :identity, label = String(correlator))
-    xlabel!("\$τ\$")
+    plot(0:length(mean(corr)) - 1, parent(mean(corr)), yerr = parent(std(corr, corrected=true)/sqrt(length(corr))), yaxis = log ? :log : :identity, label = String(correlator), title = _ensemble_to_latex_string(ens))
+    xlabel!("Imaginary Time \$τ\$")
     plot!(trange, model(trange, fit.param), label = "$nstates state fit")
     
 end
@@ -97,6 +97,6 @@ function fits(ens, correlator, tmin, tmax, nstates = 1, bs = 100)
         push!(fits, bootstrap_fits(ens, correlator, t:tmax, nstates, bs))
     end
     fits = vcat(fits...)
-    plot(tmin:tmax - nstates*2, fits[:, 2], yerr = fits[:, 4], label = string(correlator) * " mass, \$\\tau_{max}\$ = $tmax", title = only(ens.global_metadata.path))
+    plot(tmin:tmax - nstates*2, fits[:, 2], yerr = fits[:, 4], label = string(correlator) * " mass, \$\\tau_{max}\$ = $tmax", title = only(ens.global_metadata.path), title = _ensemble_to_latex_string(ens))
     xlabel!("Lower fitting range")
 end
