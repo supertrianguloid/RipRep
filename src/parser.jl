@@ -20,6 +20,12 @@ GLOBAL_SIMS = DataFrame(β=Float64[],
     SimulationType=String[],
     path=String[])
 
+struct Ensemble
+    global_metadata::DataFrame
+    run_metadata::DataFrame
+    data::DataFrame
+end
+
 ensembledir() = datadir() * "/ensembles"
 output_file_location(run_no) = ensembledir() * "/" * GLOBAL_SIMS[run_no, :path] * "/out_0"
 
@@ -224,12 +230,12 @@ function process_metadata_to_dataframe(process::DataFrame)
     return df
 end
 
-function load_run(run_no)
-    g_meta, p_meta, data = parse_output_file(run_no)
+function load_ensemble(ensemble_no)
+    g_meta, r_meta, data = parse_output_file(ensemble_no)
     print("\n")
-    println("Number of processes: ", nrow(p_meta))
+    println("Number of runs: ", nrow(r_meta))
     println("Total number of configurations: ", nrow(data))
-    println("Integrator parameters change in process numbers: ", _check_integrator(p_meta))
+    println("Integrator parameters change in runs: ", _check_integrator(r_meta))
 
     md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
 
@@ -237,7 +243,9 @@ function load_run(run_no)
         println("Missing data in configuration $md")
     end
 
-    return data
+    g_meta = hcat(g_meta, DataFrame(GLOBAL_SIMS[ensemble_no, :]))
+
+    return Ensemble(g_meta, r_meta, data)
 end
 
 initialise()
