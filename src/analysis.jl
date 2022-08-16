@@ -97,6 +97,6 @@ function fits(ens, correlator, tmin, tmax, nstates = 1, bs = 100)
         push!(fits, bootstrap_fits(ens, correlator, t:tmax, nstates, bs))
     end
     fits = vcat(fits...)
-    plot(tmin:tmax - nstates*2, fits[:, 2], yerr = fits[:, 4], label = string(correlator) * " mass, \$\\tau_{max}\$ = $tmax", title = only(ens.global_metadata.path), title = _ensemble_to_latex_string(ens))
+    plot(tmin:tmax - nstates*2, fits[:, 2], yerr = fits[:, 4], label = string(correlator) * " mass, \$\\tau_{max}\$ = $tmax", title =  _ensemble_to_latex_string(ens))
     xlabel!("Lower fitting range")
 end
