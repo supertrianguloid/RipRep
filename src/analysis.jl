@@ -8,12 +8,12 @@ theme(:dracula)
 @quickactivate "RipRep"
 include(srcdir("parser.jl"))
 
-function acceptance(data)
-    return sum(data[:, :accepted])/nrow(data)
+function acceptance(ens)
+    return sum(ens.data[:, :accepted])/nrow(ens.data)
 end
 
 function thermalise(ens, ntherm)
-    return Ensemble(ens.global_metadata, ens.run_metadata, ens.data[ntherm:end, :])
+    ens.data = ens.data[ntherm:end, :]
 end
 
 function bin(data, binsize, method)
