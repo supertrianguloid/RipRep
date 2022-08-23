@@ -103,6 +103,7 @@ end
 function parse_output_file(ensemble_no)
 
     runs = load_runs(ensemble_no)
+    runs = runs[["ERROR" ∉ i.name for i in runs]]
 
     global_metadata = extract_global_metadata(runs[1])
 
@@ -118,14 +119,16 @@ function parse_output_file(ensemble_no)
     data = Array{DataFrame}(undef, nrow(run_metadata))
 
     for i in eachindex(runs)
-        data[i] = extract_data_from_run(run[i])
+        data[i] = extract_data_from_run(runs[i])
         data[i][:, :run_no] .= i
     end
 
     data = vcat(data...)
 
-    global_metadata.IntegratorChanges = _check_integrator(run_metadata)
-    global_metadata.MissingConfigurations = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
+    global_metadata.Runs = [nrow(run_metadata)]
+    global_metadata.Confs = [nrow(data)]
+    global_metadata.IntegratorChanges = [_check_integrator(run_metadata)]
+    global_metadata.MissingConfigurations = [data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no]
 
     return global_metadata, run_metadata, data
 end
@@ -277,24 +280,22 @@ end
 
 function load_ensemble(ensemble_no)
     g_meta, r_meta, data = parse_output_file(ensemble_no)
-    print("\n")
-    println("Number of runs: ", nrow(r_meta))
-    println("Total number of configurations: ", nrow(data))
-    println("Integrator parameters change in runs: ", _check_integrator(r_meta))
 
-    md = data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no
-
-    if md != []
-        println("Missing data in configuration $md")
-    end
-
-    g_meta = hcat(g_meta, DataFrame(GLOBAL_SIMS[ensemble_no, :]))
+    g_meta = hcat(DataFrame(GLOBAL_SIMS[ensemble_no, :]), g_meta)
 
     return Ensemble(g_meta, r_meta, data)
 end
 
 function _ensemble_to_latex_string(ens)
     return "\$\\beta = " * string(only(ens.global_metadata.β)) * ",\\ C_{SW} = " * string(only(ens.global_metadata.Cˢʷ)) * ",\\ m = " * string(only(ens.global_metadata.Mass)) * ",\\ V = " * string(only(ens.global_metadata.T)) * "\\times" * string(only(ens.global_metadata.L)) * "^3\$"
+end
+
+function summarise_ensembles()
+    df = DataFrame()
+    for i in 1:nrow(GLOBAL_SIMS)
+        push!(df, load_ensemble(i).global_metadata[1, :])
+    end
+    show(df)
 end
 
 
