@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate "RipRep"
 using OffsetArrays
 using DataFrames
+using PrettyTables
 
 @info "This is " * projectname() * " running from " * projectdir()
 
@@ -35,6 +36,8 @@ struct Ensemble
 end
 
 ensembledir() = datadir() * "/ensembles"
+reportsdir() = projectdir() * "/reports"
+
 output_file_location(ens_no) = ensembledir() * "/" * GLOBAL_SIMS[ens_no, :path] * "/out_0"
 
 wfdir() = datadir() * "/WF"
@@ -56,11 +59,11 @@ function initialise()
 end
 
 function list_ensembles()
-    show(GLOBAL_SIMS[!, Not(:path)])
+    return GLOBAL_SIMS[!, Not(:path)]
 end
 
 function list_wilsonflows()
-    show(GLOBAL_WF[!, Not(:path)])
+    return GLOBAL_WF[!, Not(:path)]
 end
 
 function load_ensemble(ens_no)
@@ -129,6 +132,7 @@ function parse_output_file(ensemble_no)
     global_metadata.Confs = [nrow(data)]
     global_metadata.IntegratorChanges = [_check_integrator(run_metadata)]
     global_metadata.MissingConfigurations = [data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no]
+    global_metadata.Acceptance = [_measure_acceptance(data)]
 
     return global_metadata, run_metadata, data
 end
@@ -290,12 +294,21 @@ function _ensemble_to_latex_string(ens)
     return "\$\\beta = " * string(only(ens.global_metadata.β)) * ",\\ C_{SW} = " * string(only(ens.global_metadata.Cˢʷ)) * ",\\ m = " * string(only(ens.global_metadata.Mass)) * ",\\ V = " * string(only(ens.global_metadata.T)) * "\\times" * string(only(ens.global_metadata.L)) * "^3\$"
 end
 
-function summarise_ensembles()
+function _measure_acceptance(data)
+    return sum(data[:, :accepted])/nrow(data)
+end
+
+function summarise_ensembles(method = :show)
     df = DataFrame()
     for i in 1:nrow(GLOBAL_SIMS)
         push!(df, load_ensemble(i).global_metadata[1, :])
     end
-    show(df)
+    if(method == :save)
+        open(reportsdir() * "/ensembles.md", "w") do f
+            pretty_table(f,df, tf=PrettyTables.tf_markdown, nosubheader=true)
+        end
+    end
+    return df
 end
 
 
