@@ -45,6 +45,7 @@ ensembledir() = datadir() * "/ensembles"
 reportsdir() = projectdir() * "/reports"
 
 output_file_location(ens_no) = ensembledir() * "/" * GLOBAL_SIMS[ens_no, :path] * "/out_0"
+runs_ignore_file(ens_no) = ensembledir() * "/" * GLOBAL_SIMS[ens_no, :path] * "/RipRep/ignore_runs"
 
 wfdir() = datadir() * "/WF"
 wf_file_location(run_no) = wfdir() * "/" * GLOBAL_WF[run_no, :path] * "/wilsonflow.out"
@@ -70,10 +71,6 @@ end
 
 function list_wilsonflows()
     return GLOBAL_WF[!, Not(:path)]
-end
-
-function load_ensemble(ens_no)
-    return _convert_outformat_to_dataframe(read(output_file_location(ens_no), String))
 end
 
 function load_runs(ens_no)
@@ -135,36 +132,51 @@ function load_wilson_flow(wf_no)
     return WilsonFlow(metadata, data)
 end
 
+function _prune_runs(runs)
+    runs = runs[["ERROR" ∉ i.name for i in runs]]
+    runs = runs[["Unknown integrator type" ∉ i.output for i in runs]]
+    return runs
+end
+
 function parse_output_file(ensemble_no)
 
     runs = load_runs(ensemble_no)
-    runs = runs[["ERROR" ∉ i.name for i in runs]]
+    runs = _prune_runs(runs)
 
-    global_metadata = extract_global_metadata(runs[1])
-
-    run_metadata = Array{DataFrame}(undef, length(runs))
-
-    for i in eachindex(runs)
-        run_metadata[i] = run_metadata_to_dataframe(runs[i])
-        run_metadata[i][1, :run_no] = i
+    usable_runs = 1:length(runs)
+    if(isfile(runs_ignore_file(ensemble_no)))
+        ignore = parse.(Int, split(strip(read(runs_ignore_file(10), String)), ','))
+        usable_runs = []
+        for i in 1:length(runs)
+            if(i ∉ ignore)
+                push!(usable_runs, i)
+            end
+        end
     end
 
-    run_metadata = vcat(run_metadata...)
+    println(usable_runs)
+
+    global_metadata = extract_global_metadata(first(runs[usable_runs]))
+
+    run_metadata = DataFrame()
+
+    for i in usable_runs
+        push!(run_metadata, run_metadata_to_dataframe(runs[i])[1,:])
+        run_metadata[end, :run_no] = i
+    end
 
     data = Array{DataFrame}(undef, nrow(run_metadata))
 
-    for i in eachindex(runs)
-        data[i] = extract_data_from_run(runs[i])
-        data[i][:, :run_no] .= i
+    for i in 1:length(usable_runs)
+        data[i] = extract_data_from_run(runs[usable_runs[i]])
+        data[i][:, :run_no] .= usable_runs[i]
     end
 
     data = vcat(data...)
 
     global_metadata.Runs = [nrow(run_metadata)]
     global_metadata.Confs = [nrow(data)]
-    global_metadata.IntegratorChanges = [_check_integrator(run_metadata)]
     global_metadata.MissingConfigurations = [data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no]
-    global_metadata.Acceptance = [_measure_acceptance(data)]
 
     return global_metadata, run_metadata, data
 end
@@ -186,7 +198,7 @@ function extract_data_from_run(run::DataFrame)
 
     confs = [join(i, '\n') for i in outer]
 
-    df = DataFrame([Int64[], Int64[], Float64[], Union{Bool, Missing}[], Union{Float64, Missing}[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :proc_no, :time, :accepted, :plaquette, observables...])
+    df = DataFrame([Int64[], Int64[], Float64[], Union{Bool, Missing}[], Union{Float64, Missing}[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :run_no, :time, :accepted, :plaquette, observables...])
     for i in confs[2:end]
 
         time = missing
@@ -227,11 +239,24 @@ function extract_data_from_run(run::DataFrame)
     return df
 end
 
-function _check_integrator(p_meta::DataFrame)
-    intp = dropmissing(select(p_meta, :run_no, names(p_meta, r"int_") .=> (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))
+function _check_integrator(e::Ensemble)
+    intp = dropmissing(select(e.run_metadata, :run_no, names(e.run_metadata, r"int_") .=> (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))
     changes = intp[reduce(|, hcat([intp[:, i] .!= 0 for i in names(intp, r"int_")]...), dims=2)[:], :]
-    return changes[:, :run_no]
+    return _run_to_first_conf(e, changes[:, :run_no])
 end
+
+function _run_to_first_conf(e::Ensemble, run_no::Vector{Int64})
+    confs = []
+    for i in run_no
+        push!(confs, e.data[e.data.run_no .== i, :][1, :conf_no])
+    end
+    return confs
+end
+
+function _run_to_first_conf(e::Ensemble, run_no::Int64)
+    return e.data[e.data.run_no .== run_no, :][1, :conf_no]
+end
+
 
 function _convert_outformat_to_dataframe(str::AbstractString)
     df = DataFrame(name=String[], output=String[])
@@ -244,8 +269,8 @@ function _convert_outformat_to_dataframe(str::AbstractString)
     return df
 end
 
-function _extract_output(proc, name)
-    p = proc[proc.name.==name, :output]
+function _extract_output(run, name)
+    p = run[run.name.==name, :output]
     return p == String[] ? nothing : p
 end
 
@@ -337,6 +362,9 @@ function load_ensemble(ensemble_no)
 
     g_meta = hcat(DataFrame(GLOBAL_SIMS[ensemble_no, :]), g_meta)
 
+    e = Ensemble(g_meta, r_meta, data)
+    #e.global_metadata.IntegratorChanges = [_check_integrator(e)]
+    #e.global_metadata.Acceptance = [_measure_acceptance(e)]
     return Ensemble(g_meta, r_meta, data)
 end
 
@@ -344,13 +372,18 @@ function _ensemble_to_latex_string(ens)
     return "\$\\beta = " * string(only(ens.global_metadata.β)) * ",\\ C_{SW} = " * string(only(ens.global_metadata.Cˢʷ)) * ",\\ m = " * string(only(ens.global_metadata.Mass)) * ",\\ V = " * string(only(ens.global_metadata.T)) * "\\times" * string(only(ens.global_metadata.L)) * "^3\$"
 end
 
-function _measure_acceptance(data)
+function _measure_acceptance(e::Ensemble)
+    data = e.data
+    if(only(e.global_metadata.IntegratorChanges) != [])
+        data = e.data[maximum(only(e.global_metadata.IntegratorChanges)):end, :]
+    end
     return sum(data[:, :accepted])/nrow(data)
 end
 
 function summarise_ensembles(method = :show)
     df = DataFrame()
     for i in 1:nrow(GLOBAL_SIMS)
+        println("Parsing ensemble $i...")
         push!(df, load_ensemble(i).global_metadata[1, :])
     end
     if(method == :save)
