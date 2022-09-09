@@ -30,13 +30,14 @@ GLOBAL_WF = DataFrame(β=Float64[],
     SimulationType=String[],
     path=String[])
 
-struct Ensemble
+mutable struct Ensemble
     global_metadata::DataFrame
     run_metadata::DataFrame
     data::DataFrame
+    analysis::DataFrame
 end
 
-struct WilsonFlow
+mutable struct WilsonFlow
     metadata::DataFrame
     data::DataFrame
 end
@@ -73,9 +74,9 @@ function list_wilsonflows()
     return GLOBAL_WF[!, Not(:path)]
 end
 
-function load_runs(ens_no)
+function load_runs(path::String)
     # Open the output file and split on new runs
-    output = read(output_file_location(ens_no), String)
+    output = read(path, String)
     r = split(output, "[SYSTEM][0]Gauge group: SU(2)\n", keepempty=false)
     runs = Vector{DataFrame}(undef, length(r))
     # Populate a vector of DataFrames for each run
@@ -135,12 +136,13 @@ end
 function _prune_runs(runs)
     runs = runs[["ERROR" ∉ i.name for i in runs]]
     runs = runs[["Unknown integrator type" ∉ i.output for i in runs]]
+    #runs = runs[["Process finalized." ∈ i.output for i in runs]]
     return runs
 end
 
 function parse_output_file(ensemble_no)
 
-    runs = load_runs(ensemble_no)
+    runs = load_runs(output_file_location(ensemble_no))
     runs = _prune_runs(runs)
 
     usable_runs = 1:length(runs)
@@ -153,8 +155,6 @@ function parse_output_file(ensemble_no)
             end
         end
     end
-
-    println(usable_runs)
 
     global_metadata = extract_global_metadata(first(runs[usable_runs]))
 
@@ -357,15 +357,26 @@ function run_metadata_to_dataframe(run::DataFrame)
     return df
 end
 
-function load_ensemble(ensemble_no)
+function load_ensemble(ensemble_no::Integer)
     g_meta, r_meta, data = parse_output_file(ensemble_no)
 
     g_meta = hcat(DataFrame(GLOBAL_SIMS[ensemble_no, :]), g_meta)
 
-    e = Ensemble(g_meta, r_meta, data)
-    #e.global_metadata.IntegratorChanges = [_check_integrator(e)]
-    #e.global_metadata.Acceptance = [_measure_acceptance(e)]
-    return Ensemble(g_meta, r_meta, data)
+    e = Ensemble(g_meta, r_meta, data, data)
+    e.global_metadata.IntegratorChanges = [_check_integrator(e)]
+    e.global_metadata.Acceptance = [_measure_acceptance(e)]
+    return e
+end
+
+function load_ensemble(path::String)
+    g_meta, r_meta, data = parse_output_file(ensemble_no)
+
+    g_meta = hcat(DataFrame(GLOBAL_SIMS[ensemble_no, :]), g_meta)
+
+    e = Ensemble(g_meta, r_meta, data, data)
+    e.global_metadata.IntegratorChanges = [_check_integrator(e)]
+    e.global_metadata.Acceptance = [_measure_acceptance(e)]
+    return e
 end
 
 function _ensemble_to_latex_string(ens)
