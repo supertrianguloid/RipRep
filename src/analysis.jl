@@ -3,25 +3,8 @@ function acceptance(ens)
     return sum(ens.data[:, :accepted])/nrow(ens.data)
 end
 
-function thermalise!(ens::Ensemble, ntherm)
-    ens.analysis = ens.data[ntherm:end, :]
-end
-
 function thermalise(data::DataFrame, ntherm)
     return data[ntherm:end, :]
-end
-
-function bin(ens, binsize, method = :equal)
-    data = ens.data
-    if binsize == 1
-        return
-    end
-    offset = nrow(data) % binsize
-    data = thermalise(data, offset)
-    newlen = nrow(data) ÷ binsize
-    if method == :equal
-        ens.analysis = data[[1 + (i - 1)*binsize for i in 1:newlen], :]
-    end
 end
 
 function bin(data::DataFrame, binsize, method = :equal)
@@ -52,15 +35,7 @@ function plot_t2e(wf, binsize = 1)
     ylabel!("\$t^2E\$")
 end
 
-function bootstrap_fits(ens, correlator, trange, nstates = 1, bs = 100)
-    fits = []
-    T = ens.global_metadata.T
-    for i ∈ 1:bs
-        data = ens.data[rand(1:bs, bs), correlator]
-        push!(fits, _fit_helper(data, trange, nstates, T).param)
-    end
-    return hcat(mean(fits)..., std(fits)...)
-end
+
 
 function fits(ens, correlator, tmin, tmax, nstates = 1, bs = 100)
     fits = []

@@ -27,6 +27,7 @@ end
 mutable struct WilsonFlow
     metadata::DataFrame
     data::DataFrame
+    analysis::DataFrame
 end
 
 function load_runs(path::String)
@@ -43,6 +44,7 @@ end
 
 function load_ensemble(path::String)
     g_meta, r_meta, data = parse_output_file(path)
+    data[:, :gk] = (data[:, :g1] + data[:, :g2] + data[:, :g3])/3
     e = Ensemble(g_meta, r_meta, data, data)
     e.global_metadata.IntegratorChanges = [_check_integrator(e)]
     e.global_metadata.Acceptance = [_measure_acceptance(e)]
@@ -255,3 +257,69 @@ function _measure_acceptance(e::Ensemble)
     end
     return sum(data[:, :accepted])/nrow(data)
 end
+
+function load_wilson_flow(path)
+    output = split(read(path, String), '\n')
+    
+    data = DataFrame([Int64[], Float64[], Float64[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:conf_no, :time, :plaquette, :t, :E, :t²E, :Esym, :t²Esym, :TC])
+
+    outer = []
+    inner = []
+
+    for i in output
+        if(match(WF_REGEX, i) !== nothing)
+            push!(outer, inner)
+            inner = []
+        end
+        push!(inner, i)
+    end
+    push!(outer, inner)
+    outer = join.(outer, '\n')
+
+    outer = _convert_outformat_to_dataframe.(outer)
+
+    metadata = _extract_wf_metadata(outer[1])
+
+    for conf in outer[2:end]
+        conf_no = parse(Int, only(match(WF_REGEX, only(_extract_output(conf, "MAIN"))).captures))
+        time = match(r"done \[" * INTEGER_REGEX * " sec " * INTEGER_REGEX * r" usec\]", only(_extract_output(outer[2], "TIMING"))).captures
+        time = parse(Int, time[1]) + 1e-6*parse(Int, time[2])
+        plaquette = parse(Float64, match("Plaquette="*FLOAT_REGEX_FULL, _extract_output(conf, "IO")[2]).captures[1])
+        wf = []
+        for flow in _extract_output(conf, "WILSONFLOW")
+            a = match(r"WF \(t,E,t2\*E,Esym,t2\*Esym,TC\) = (.*)", flow)
+            push!(wf, parse.(Float64, split(a.captures[1], ' ')))
+        end
+        wf = hcat(wf...)'
+        push!(data, (conf_no = conf_no,
+                    time = time,
+                    plaquette = plaquette,
+                    t = wf[:, 1],
+                    E = wf[:, 2],
+                    t²E = wf[:, 3],
+                    Esym = wf[:, 4],
+                    t²Esym = wf[:, 5], 
+                    TC = wf[:, 6]
+                    ))
+    end                 
+    return WilsonFlow(metadata, data, data)
+end
+
+function _extract_wf_metadata(first_frame::DataFrame)
+    ranlux = _only_match(r"^RLXD (.+)$", _extract_output(first_frame, "SETUP_RANDOM"))
+    integrator = _only_match(r"WF integrator: (.+)$", _extract_output(first_frame, "MAIN"))
+    tmax = parse(Float64, _only_match(r"tmax: (.+)$", _extract_output(first_frame, "MAIN")))
+    N_meas = parse(Int64, _only_match(r"WF number of measures: (.+)$", _extract_output(first_frame, "MAIN")))
+    ϵ₀ = parse(Float64, _only_match(r"WF initial epsilon: (.+)$", _extract_output(first_frame, "MAIN")))
+    Δ = parse(Float64, _only_match(r"WF delta: (.+)$", _extract_output(first_frame, "MAIN")))
+    dt = parse(Float64, _only_match(r"WF measurement interval dt : (.+)$", _extract_output(first_frame, "MAIN")))
+
+    return DataFrame(integrator=integrator,
+                    ranlux=ranlux,
+                    tmax=tmax,
+                    N_meas=N_meas,
+                    ϵ₀=ϵ₀,
+                    Δ=Δ,
+                    dt=dt)
+end
+
