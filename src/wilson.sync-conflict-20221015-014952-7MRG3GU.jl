@@ -41,6 +41,22 @@ function plot_t2e!(wf, range = :all)
     ylabel!("\$t^2E\$")
 end
 
+# TODO: Why are t values being mixed!?
+
+function bin!(wf::WilsonFlow, binsize, method = :equal)
+    if binsize == 1
+        return
+    end
+    data = wf.data
+    offset = nrow(data) % binsize
+    analysis = data[offset:end, :]
+    newlen = nrow(analysis) ÷ binsize
+    if method == :equal
+        wf.analysis = analysis[[1 + (i - 1)*binsize for i in 1:newlen], :]
+        return
+    end
+end
+
 function _bootstrap(data, n = 1000)
     l = length(data)
     bs = []

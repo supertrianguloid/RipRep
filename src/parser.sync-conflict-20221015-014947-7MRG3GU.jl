@@ -314,15 +314,16 @@ function load_wilson_flow(path)
                     TC = wf[:, 6]
                     ))
     end                 
+    # TODO: Fix bug.
     wf = WilsonFlow(metadata, data, data)
     W = Vector{Vector{Float64}}()
     for i in wf.data.t²E
-        w = Vector{Float64}()
-        for j in 2:(length(i)-1)
-            push!(w, (i[j+1] - i[j-1]))
+        t = Vector{Float64}()
+        for j in 2:length(i)-1
+            push!(t, (i[j+1] - i[j-1]))
         end
-        w = w .* (wf.data[1, :t][2:(length(i)-1)])
-        push!(W, w)
+        t = t .* wf.data[1, :t][2:length(i)-1]
+        push!(W, t)
     end
     W = W./(2*wf.metadata.dt)
     wf.analysis[:, :W] = wf.data[:, :W] = W

@@ -187,9 +187,4 @@ function summarise_ensembles(method = :show)
     return df
 end
 
-function _only_match(regex, output)
-    m = match.(regex, output)
-    return only(only(m[m .!= nothing]).captures)
-end
-
 initialise()

@@ -40,16 +40,6 @@ function plot_correlator(ens, corr, range; log::Bool=true)
     xlabel!("\$τ\$")
 end
 
-function plot_correlator!(ens, corr, range; log::Bool=true)
-    correlator = ens.analysis[:, corr]
-    plot!(Array(range), parent(mean(correlator)[range]), yerr = parent((std(correlator, corrected=true)/sqrt(length(correlator)))[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens))
-    xlabel!("\$τ\$")
-end
-
-function plot_correlator!(ens, corr; log::Bool=true)
-    correlator = ens.analysis[:, corr]
-    plot_correlator!(ens, corr, eachindex(correlator[1]), log=log)
-end
 
 function fit_cosh(ens, correlator, range; fold = :none, nstates = 1, p0 = :random)
     T = ens.global_metadata.T
@@ -86,6 +76,29 @@ function plot_fit(ens::Ensemble, correlator::Symbol, trange; plotrange = :defaul
     xlabel!("Imaginary Time \$τ\$")
     #annotate!((0.25,0.25), string(fit.param))
     plot!(trange, model(trange, fit.param), label = "$nstates state fit")    
+end
+
+function thermalise!(ens::Ensemble, ntherm)
+    ens.analysis = ens.data[ntherm:end, :]
+    if !isempty(ens.analysis[([any(i) for i in eachrow(ismissing.(ens.analysis))]),:])
+        @error "Thermalisation time does not get rid of all missing configurations!"
+    end
+end
+
+function bin!(ens, binsize, method = :equal)
+    data = ens.data
+    if binsize == 1
+        ens.analysis = data
+        return
+    end
+    offset = nrow(data) % binsize
+    if(offset != 0)
+        data = data[offset:end, :]
+    end
+    newlen = nrow(data) ÷ binsize
+    if method == :equal
+        ens.analysis = data[[1 + (i - 1)*binsize for i in 1:newlen], :]
+    end
 end
 
 function bootstrap_fits(ens, correlator, trange; nstates = 1, bs = 100, p0 = :random)
@@ -177,7 +190,7 @@ function pcac_mass(ens::Ensemble, N_boot = 1000)
     return mpcac
 end
 
-function plot_effective_mass(ens, corr; nboot = 1000, log = true)
+function plot_effective_mass(ens, corr, nboot = 1000, log = true)
     meff_boot = []
     for i in 1:nboot
         bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
@@ -185,8 +198,8 @@ function plot_effective_mass(ens, corr; nboot = 1000, log = true)
         
         meffs = []
         T = only(ens.global_metadata.T)
-        for τ in Array(eachindex(c))[3:end]
-            push!(meffs, only(find_zeros(m -> (c[τ-1]/c[τ])*cosh(m * (τ - (T/2))) - cosh(m * ((τ - 1) - (T/2))), 0.0,5.0)))
+        for τ in Array(eachindex(c))[2:end]
+            push!(meffs, find_zero(m -> (c[τ-1]/c[τ])*cosh(m * (τ - (T/2))) - cosh(m * ((τ - 1) - (T/2))), [0.0,10.0]))
         end
         push!(meff_boot, meffs)
     end
