@@ -135,50 +135,53 @@ end
 
 
 #TODO: Check time indices.
-function plot_mpcac(ens, bs = 50)
-    mpcac = []
-
-    N_boot = bs
-
-    for n in 1:N_boot
-        bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
-        dg0g5 = []
-        g5 = []
-
-        for m in 1:N_boot
-            bs_bs = rand(bs, nrow(ens.analysis))
-            ens_bb = ens.analysis[bs_bs, :]
-
-            dg0g5b = []
-            for sample in ens_bb.g0g5
-                t = []
-                for j in 0:length(sample)-3
-                    push!(t, (sample[j + 2] - sample[j])/2)
-                end
-                push!(dg0g5b, t)
-            end
-
-            push!(dg0g5, mean(dg0g5b))
-            push!(g5, mean(ens_bb.g5)[1:end-1])
-        end
-
-        push!(mpcac, mean(dg0g5)./(2*mean(g5)))
-    end
+function plot_mpcac(ens; nboot = 1000)
+    mpcac = pcac_mass(ensemble, folded = folded, nboot = bs)
 
     plot(1:length(ens.data.g5[1])-2, mean(mpcac), yerr=std(mpcac), label="\$m_{pcac}(\\tau)\$")
 end
 
-function pcac_mass(ens::Ensemble, N_boot = 1000)
+function pcac_mass_double_bootstrap(ens::Ensemble; folded = true, nboot = 1000)
     mpcac = []
-    for n in 1:N_boot
-        bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
-        push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re_folded])./mean(ens.analysis[bs, :g5_folded])[1:end-1])
+
+    for n in 1:nboot
+        bs1 = rand(1:nrow(ens.analysis), nrow(ens.analysis))
+        dg5_g0g5 = []
+        g5 = []
+        for m in 1:nboot
+            bs2 = rand(bs1, nrow(ens.analysis))
+            if folded
+                push!(dg5_g0g5, mean(ens.analysis[bs2, :dg5_g0g5_re_folded]))
+                push!(g5, mean(ens.analysis[bs2, :g5_folded])[1:end-1])
+            else
+                push!(dg5_g0g5, mean(ens.analysis[bs2, :dg5_g0g5_re]))
+                push!(g5, mean(ens.analysis[bs2, :g5])[1:end-1])
+            end
+        end
+        push!(mpcac, 0.5*mean(dg5_g0g5)./mean(g5))
     end
     return mpcac
 end
 
-function plot_effective_mass(ens, corr; nboot = 1000, log = true)
+function pcac_mass(ens::Ensemble; folded = true, nboot = 1000)
+    mpcac = []
+    
+    for n in 1:nboot
+        bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
+        if folded
+            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re_folded])./mean(ens.analysis[bs, :g5_folded])[1:end-1])
+        else
+            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re])./mean(ens.analysis[bs, :g5])[1:end-1])
+        end
+    end
+    return mpcac
+end
+
+function plot_effective_mass(ens, corr, range = :default; nboot = 1000, log = true)
     meff_boot = []
+    if range == :default
+        range = 0:length(mean(ens.corr))-1
+    end
     for i in 1:nboot
         bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
         c = mean(ens.analysis[bs, corr])

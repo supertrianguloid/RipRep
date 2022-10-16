@@ -41,10 +41,10 @@ function plot_t2e!(wf, range = :all)
     ylabel!("\$t^2E\$")
 end
 
-function _bootstrap(data, n = 1000)
+function _bootstrap(data, nboot = 1000)
     l = length(data)
     bs = []
-    for i ∈ 1:n
+    for i ∈ 1:nboot
         push!(bs, mean(data[rand(1:l, l)]))
     end
     return std(bs)
