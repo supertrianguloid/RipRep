@@ -29,26 +29,18 @@ function _cosh_model(nstates, T, τ, params)
     end
 end
 
-function plot_correlator(ens, corr; log::Bool=true)
+function plot_correlator(ens, corr, range = :default; log::Bool=true, _bang = false)
+    if range == :default
+        range = eachindex(ens.analysis[1, corr])
+    end
     correlator = ens.analysis[:, corr]
-    plot_correlator(ens, corr, eachindex(correlator[1]), log=log)
-end
-
-function plot_correlator(ens, corr, range; log::Bool=true)
-    correlator = ens.analysis[:, corr]
-    plot(Array(range), parent(mean(correlator)[range]), yerr = parent((std(correlator, corrected=true)/sqrt(length(correlator)))[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens))
+    plot_func = _bang ? plot! : plot
+    plot_func(Array(range), parent(mean(correlator)[range]), yerr = parent((std(correlator, corrected=true)/sqrt(length(correlator)))[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens))
     xlabel!("\$τ\$")
 end
 
-function plot_correlator!(ens, corr, range; log::Bool=true)
-    correlator = ens.analysis[:, corr]
-    plot!(Array(range), parent(mean(correlator)[range]), yerr = parent((std(correlator, corrected=true)/sqrt(length(correlator)))[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens))
-    xlabel!("\$τ\$")
-end
-
-function plot_correlator!(ens, corr; log::Bool=true)
-    correlator = ens.analysis[:, corr]
-    plot_correlator!(ens, corr, eachindex(correlator[1]), log=log)
+function plot_correlator!(ens, corr, range = :default; log::Bool=true)
+    plot_correlator(ens, corr, range, log = log, _bang = true)
 end
 
 function fit_cosh(ens, correlator, range; fold = :none, nstates = 1, p0 = :random)
@@ -60,7 +52,7 @@ end
 function _fit_helper(data, trange, nstates, T, p0)
     model(τ, params) = _cosh_model(nstates, T, τ, params)
     μ = mean(data)
-    w = 1 ./ var(data, corrected=true)
+    w = 1 ./ var(data)
     if(p0 == :random)
         p0 = abs.(randn(nstates * 2)) .+ 1
     end
@@ -82,8 +74,9 @@ function plot_fit(ens::Ensemble, correlator::Symbol, trange; plotrange = :defaul
     if(plotrange == :default)
         plotrange = 0:length(mean(corr)) - 1
     end
-    plot(plotrange, parent(mean(corr))[plotrange .+ 1], yerr = parent(std(corr, corrected=true)/sqrt(length(corr)))[plotrange .+ 1], yaxis = log ? :log : :identity, label = String(correlator), title = _ensemble_to_latex_string(ens))
-    xlabel!("Imaginary Time \$τ\$")
+    #plot(plotrange, parent(mean(corr))[plotrange .+ 1], yerr = parent(std(corr, corrected=true)/sqrt(length(corr)))[plotrange .+ 1], yaxis = log ? :log : :identity, label = String(correlator), title = _ensemble_to_latex_string(ens))
+    #xlabel!("Imaginary Time \$τ\$")
+    plot_correlator(ens, correlator, plotrange, log=log)
     #annotate!((0.25,0.25), string(fit.param))
     plot!(trange, model(trange, fit.param), label = "$nstates state fit")    
 end
@@ -124,8 +117,7 @@ end
 function plot_error(ensemble, correlator, trange, thermalisation, binrange; nstates = 1, bs = 20, p0 = :random)
     errors = []
     for i in binrange
-        thermalise!(ensemble, thermalisation);
-        bin!(ensemble, i);
+        thermalise_bin!(ensemble, thermalisation, i);
         error = double_bootstrap_fits(ensemble, correlator, trange, nstates = nstates, p0 = p0, bs = bs)
         push!(errors, error)
     end
@@ -133,45 +125,52 @@ function plot_error(ensemble, correlator, trange, thermalisation, binrange; nsta
     plot(binrange, errors[:, 2], yerr = errors[:, 4], title = _ensemble_to_latex_string(ensemble), label = "Error on the error in the mass for " * string(correlator))
 end
 
+function plot_mpcac(ens; nboot = 1000, folded = true, _bang = false)
+    mpcac = pcac_mass(ens, folded = folded, nboot = nboot)
+    μ = mean(mpcac)
+    σ = std(mpcac)    
 
-#TODO: Check time indices.
-function plot_mpcac(ens; nboot = 1000)
-    mpcac = pcac_mass(ensemble, folded = folded, nboot = bs)
+    plot_func = _bang ? plot! : plot
 
-    plot(1:length(ens.data.g5[1])-2, mean(mpcac), yerr=std(mpcac), label="\$m_{pcac}(\\tau)\$")
+    plot_func(1:length(μ), μ, yerr=σ, label="\$m_{pcac}(\\tau)\$", title = _ensemble_to_latex_string(ens))
+end
+
+function plot_mpcac!(ens; nboot = 1000, folded = true)
+    plot_mpcac(ens, nboot = nboot, folded = folded, _bang = true)
 end
 
 function pcac_mass_double_bootstrap(ens::Ensemble; folded = true, nboot = 1000)
-    mpcac = []
+    mpcac_outer = []
 
     for n in 1:nboot
         bs1 = rand(1:nrow(ens.analysis), nrow(ens.analysis))
-        dg5_g0g5 = []
-        g5 = []
+        mpcac_inner = []
         for m in 1:nboot
             bs2 = rand(bs1, nrow(ens.analysis))
             if folded
-                push!(dg5_g0g5, mean(ens.analysis[bs2, :dg5_g0g5_re_folded]))
-                push!(g5, mean(ens.analysis[bs2, :g5_folded])[1:end-1])
+                push!(mpcac_inner, 0.5*mean(ens.analysis[bs2, :dg5_g0g5_re_folded])./mean(ens.analysis[bs2, :g5_folded])[1:end-1])
             else
-                push!(dg5_g0g5, mean(ens.analysis[bs2, :dg5_g0g5_re]))
-                push!(g5, mean(ens.analysis[bs2, :g5])[1:end-1])
+                push!(mpcac_inner, 0.5*mean(ens.analysis[bs2, :dg5_g0g5_re])./mean(ens.analysis[bs2, :g5])[1:end-1])
             end
         end
-        push!(mpcac, 0.5*mean(dg5_g0g5)./mean(g5))
+        push!(mpcac_outer, mean(mpcac_inner))
     end
-    return mpcac
+    return mpcac_outer
 end
 
-function pcac_mass(ens::Ensemble; folded = true, nboot = 1000)
+function pcac_mass_naive(ens::Ensemble; folded = true)
+    
+end
+
+function pcac_mass(ens::Ensemble; folded = true, nboot = 1000, shift = 0)
     mpcac = []
     
     for n in 1:nboot
         bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
         if folded
-            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re_folded])./mean(ens.analysis[bs, :g5_folded])[1:end-1])
+            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re_folded])./(mean(ens.analysis[bs, :g5_folded])[(1 + shift):end-1+shift]))
         else
-            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re])./mean(ens.analysis[bs, :g5])[1:end-1])
+            push!(mpcac, 0.5*mean(ens.analysis[bs, :dg5_g0g5_re])./(mean(ens.analysis[bs, :g5])[(1 + shift):end-1+shift]))
         end
     end
     return mpcac
@@ -180,7 +179,7 @@ end
 function plot_effective_mass(ens, corr, range = :default; nboot = 1000, log = true)
     meff_boot = []
     if range == :default
-        range = 0:length(mean(ens.corr))-1
+        range = 0:length(mean(ens.analysis[1,corr]))-1
     end
     for i in 1:nboot
         bs = rand(1:nrow(ens.analysis), nrow(ens.analysis))
