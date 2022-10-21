@@ -63,23 +63,22 @@ function _wf_time_to_index_w(wf::WilsonFlow, time)
     return only(findall(wf.analysis.t[1] .≈ time)) - 1
 end
 
-function find_t0(wf, window; nboot = 100, ref = 1.0)
+function _find_t0(wf, data, window, dt; nboot = 100, ref = 1.0)
     n1 = _wf_time_to_index(wf, window[1])
     n2 = _wf_time_to_index(wf, window[2])
     m = []
     c = []
-    cov = []
     for i in 1:nboot
-        s = rand(1:nrow(wf.analysis), nrow(wf.analysis))
-        σ² = var(wf.analysis[s, :t²E])
-        mu = mean(wf.analysis[s, :t²E])
+        s = rand(1:nrow(data), nrow(data))
+        σ² = var(data[s, :t²E])
+        mu = mean(data[s, :t²E])
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
         push!(m, fit.param[1])
         push!(c, fit.param[2])
-        push!(cov, estimate_covar(fit)[2])
     end
-    return reference_time(ref, mean(c), std(c), mean(m), std(m), mean(cov))
+    t = reference_time(ref, mean(c), var(c), mean(m), var(m), cov(m, c))
+    return t
 end
 
 function _find_w0(wf, data, window, dt; nboot = 100, ref = 1.0)
@@ -104,6 +103,10 @@ function find_w0(wf, window; nboot = 100, ref = 1.0)
     return _find_w0(wf, wf.analysis, window, wf.metadata.dt, nboot = nboot, ref = ref)
 end
 
+function find_t0(wf, window; nboot = 100, ref = 1.0)
+    return _find_t0(wf, wf.analysis, window, wf.metadata.dt, nboot = nboot, ref = ref)
+end
+
 function error_on_error_w0(wf, window; nboot = 100, ref = 1.0)
     w0 = []
     for i in 1:nboot
@@ -111,6 +114,29 @@ function error_on_error_w0(wf, window; nboot = 100, ref = 1.0)
     end
     w0 = collect.(w0)
     return hcat(mean(w0)..., std(w0)...)
+end
+
+function error_on_error_t0(wf, window; nboot = 100, ref = 1.0)
+    t0 = []
+    for i in 1:nboot
+        push!(t0, _find_t0(wf, wf.analysis[rand(1:nrow(wf.analysis), nrow(wf.analysis)), :], window, wf.metadata.dt, nboot=nboot, ref=ref))
+    end
+    t0 = collect.(t0)
+    return hcat(mean(t0)..., std(t0)...)
+end
+
+function wf_plot_error_on_error(wf, window, maxbin, type; nboot = 100, ref = 1.0, method = :equal)
+    res = []
+    for i in 1:maxbin
+        thermalise_bin!(wf, 1, i, method = method)
+        if type == :w0
+            push!(res, error_on_error_w0(wf, window, nboot = nboot, ref = ref))
+        elseif type == :t0
+            push!(res, error_on_error_t0(wf, window, nboot = nboot, ref = ref))
+        end
+    end
+    res = vcat(res...)
+    plot(1:maxbin, res[:,3], yerr = res[:,4])
 end
 
 function reference_time(yref, c, cvar, m, mvar, cov = 0)
