@@ -115,8 +115,8 @@ function double_bootstrap_fits(ens, correlator, trange; nstates = 1, bs = 100, p
         fits_inner = []
         residuals_inner = []
         for j in 1:bs
-            data = data[rand(1:stats, stats)]
-            fit = _fit_helper(data, trange, nstates, T, p0)
+            data2 = data[rand(1:stats, stats)]
+            fit = _fit_helper(data2, trange, nstates, T, p0)
             push!(fits_inner, fit.param)
             push!(residuals_inner, fit.resid)
         end
@@ -172,8 +172,6 @@ function pcac_fit_bootstrap(ens, fitrange; folded = true, nboot = 100)
     end
     return mean(mpcac_outer), std(mpcac_outer)
 end
-
-
 
 function plot_mpcac!(ens; nboot = 1000, folded = true)
     plot_mpcac(ens, nboot = nboot, folded = folded, _bang = true)
