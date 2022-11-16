@@ -31,7 +31,7 @@ function default_thermalise_bin!(ens; bin = false)
     elseif N > 750
         therm = 500
     else
-        therm = 0
+        therm = 1
     end
 
     if N > 3000
