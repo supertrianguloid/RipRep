@@ -2,21 +2,49 @@ using Plots
 using Statistics
 using LsqFit
 
-theme(:dracula)
-default(size = (900, 700))
-
 include("parser.jl")
 include("utilities.jl")
 
-@info "RipRep spectroscopy code activated."
-
-
-function plot_plaquette(ens, range = :default)
+function plot_plaquette(ens; range = :default, _bang = false)
     if range == :default
         range = ens.analysis[:, :conf_no]
     end
-    plot(range, ens.analysis[in.(ens.analysis.conf_no, (range,)), :plaquette], label="Plaquette", title = _ensemble_to_latex_string(ens))
+    plot_func = _bang ? plot! : plot
+    plot_func(range, ens.analysis[in.(ens.analysis.conf_no, (range,)), :plaquette], label="Plaquette", title = _ensemble_to_latex_string(ens))
     xlabel!("Configuration")
+end
+
+function plot_plaquette!(ens; range = :default)
+    plot_plaquette(ens, range=range, _bang=true)
+end
+
+function default_thermalise_bin!(ens; bin = false)
+    dtype = typeof(ens)
+    if(dtype == Ensemble)
+        N = only(ens.global_metadata.Confs)
+    else
+        N = nrow(ens.data)
+    end
+    if N > 1000
+        therm = 800
+        bs = 100
+    elseif N > 750
+        therm = 500
+    else
+        therm = 0
+    end
+
+    if N > 3000
+        bs = 100
+    elseif N > 1000
+        bs = 10
+    else
+        bs = 5
+    end
+    if bin == false
+        bs = 1
+    end
+    thermalise_bin!(ens, therm, bs)
 end
 
 function _cosh_model(nstates, T, τ, params)
@@ -125,7 +153,8 @@ function double_bootstrap_fits(ens, correlator, trange; nstates = 1, bs = 100, p
     return hcat(mean(errors)..., std(errors)...)
 end
 
-function plot_error(ensemble, correlator, trange, thermalisation, binrange; nstates = 1, bs = 20, p0 = :random, method = :equal)
+function plot_error(ensemble, correlator, trange, thermalisation, binrange; nstates = 1, bs = 20, p0 = :random, method = :equal, _bang = false)
+    plot_func = _bang ? plot! : plot
     errors = []
     for i in binrange
         thermalise_bin!(ensemble, thermalisation, i, method = method);
@@ -133,7 +162,11 @@ function plot_error(ensemble, correlator, trange, thermalisation, binrange; nsta
         push!(errors, error)
     end
     errors = vcat(errors...)
-    plot(binrange, errors[:, 2], yerr = errors[:, 4], title = _ensemble_to_latex_string(ensemble), label = "Error on the error in the mass for " * string(correlator))
+    plot_func(binrange, errors[:, 2], yerr = errors[:, 4], title = _ensemble_to_latex_string(ensemble), label = "Error on the error in the mass for " * string(correlator))
+end
+
+function plot_error!(ensemble, correlator, trange, thermalisation, binrange; nstates = 1, bs = 20, p0 = :random, method = :equal, _bang = true)
+    plot_error(ensemble, correlator, trange, thermalisation, binrange; nstates = nstates, bs = bs, p0 = p0, method = method, _bang = true)
 end
 
 function plot_mpcac(ens; nboot = 1000, folded = true, _bang = false)

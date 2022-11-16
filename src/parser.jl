@@ -5,8 +5,6 @@ using StatsBase
 
 include("utilities.jl")
 
-@info "RipRep parser activated."
-
 FLOAT_REGEX_FULL = r"([+-]?(\d+([.]\d*)?([eE][+-]?\d+)?|[.]\d+([eE][+-]?\d+)?))"
 FLOAT_REGEX = r"([-+]?[0-9]*\.?[0-9]*)"
 
@@ -16,7 +14,6 @@ CONF_REGEX = r"\[DeltaS = " * FLOAT_REGEX_FULL * r"\]\[" * r"exp\(-DS\) = " * FL
 WF_REGEX = r"Configuration from .*n" * INTEGER_REGEX
 
 runs_ignore_file(path::String) = path * "/RipRep/ignore_runs"
-out_file(path::String) = path * "/out_0"
 reports_dir() = "../reports"
 
 mutable struct Ensemble
@@ -34,7 +31,7 @@ end
 
 function load_runs(path::String)
     # Open the output file and split on new runs
-    output = read(out_file(path), String)
+    output = read(path, String)
     r = split(output, "[SYSTEM][0]Gauge group: SU(2)\n", keepempty=false)
     runs = Vector{DataFrame}(undef, length(r))
     # Populate a vector of DataFrames for each run
@@ -58,17 +55,9 @@ function load_ensemble(path::String)
     e.global_metadata.IntegratorChanges = [_check_integrator(e)]
     e.global_metadata.Acceptance = [_measure_acceptance(e)]
     e.global_metadata.DuplicatedConfigurations = [sort([i[1] for i in countmap(e.data[:, :conf_no]) if i[2] > 1])]
-    name = split(path, "/")[end]
-    r = r"b" * FLOAT_REGEX * "_csw" * FLOAT_REGEX * "_m" * FLOAT_REGEX * "_L" * INTEGER_REGEX * "T" * INTEGER_REGEX * r"_(.+)"
-    m = match(r, name).captures
-    e.global_metadata.β = [parse(Float64, m[1])]
-    e.global_metadata.Cˢʷ = [parse(Float64, m[2])]
-    e.global_metadata.Mass = [parse(Float64, m[3])]
-    e.global_metadata.L = [parse(Int64, m[4])]
-    e.global_metadata.T = [parse(Int64, m[5])]
-    e.global_metadata.SimulationType = [string(m[6])]
+    
+    e.global_metadata.SimulationType = ["expclv"]
     e.global_metadata = select(e.global_metadata, [:β, :Cˢʷ, :Mass, :L, :T, :SimulationType, :Confs, :Acceptance, :Runs, :IntegratorChanges, :MissingConfigurations, :DuplicatedConfigurations, :ranlux])
-    @show e.global_metadata
     return e
 end
 
@@ -113,6 +102,7 @@ function parse_output_file(path::String)
     return global_metadata, run_metadata, data
 end
 
+
 function _convert_outformat_to_dataframe(str::AbstractString)
     df = DataFrame(name=String[], output=String[])
     line_regex = r"^\[([a-zA-Z_]+)\]\[[0-9]+\](.*)"
@@ -138,7 +128,13 @@ end
 
 function extract_global_metadata(first_frame::DataFrame)
     ranlux = only(match(r"^RLXD (.+)", only(_extract_output(first_frame, "SETUP_RANDOM"))).captures)
-    return DataFrame(ranlux=ranlux)
+    action = _extract_output(first_frame, "ACTION")
+    T = parse(Int64, split(split(_extract_output(first_frame,"GEOMETRY_INIT")[1])[end], "x")[1])
+    L = parse(Int64, split(split(_extract_output(first_frame,"GEOMETRY_INIT")[1])[end], "x")[end])
+    β = parse(Float64, match(r"beta = ([\+\-0-9.]+)", action[2]).captures[1])
+    Mass = parse(Float64, match(r"mass = ([\+\-0-9.]+)", action[3]).captures[1])
+    Cˢʷ = parse(Float64, only(match(r"reset to csw = ([\+\-0-9.]+)", _extract_output(first_frame, "CLOVER")[end]).captures))
+    return DataFrame(ranlux=ranlux, L=L, T=T, β=β, Mass=Mass, Cˢʷ=Cˢʷ)
 end
 
 function _extract_output(run, name)
@@ -211,7 +207,7 @@ function extract_data_from_run(run::DataFrame)
 
         d = []
         try
-            push!(d, parse(Float64, only(match(r"Plaquette: " * FLOAT_REGEX, i).captures)))
+            push!(d, parse(Float64, only(match(r"Plaquette: " * r"(.*)", i).captures)))
         catch e
             push!(d, missing)
         end
@@ -327,6 +323,60 @@ function load_wilson_flow(path)
     W = W./(2*wf.metadata.dt)
     wf.analysis[:, :W] = wf.data[:, :W] = W
     return wf
+end
+
+function _extract_wf_metadata(first_frame::DataFrame)
+    ranlux = _only_match(r"^RLXD (.+)$", _extract_output(first_frame, "SETUP_RANDOM"))
+    integrator = _only_match(r"WF integrator: (.+)$", _extract_output(first_frame, "MAIN"))
+    tmax = parse(Float64, _only_match(r"tmax: (.+)$", _extract_output(first_frame, "MAIN")))
+    N_meas = parse(Int64, _only_match(r"WF number of measures: (.+)$", _extract_output(first_frame, "MAIN")))
+    ϵ₀ = parse(Float64, _only_match(r"WF initial epsilon: (.+)$", _extract_output(first_frame, "MAIN")))
+    Δ = parse(Float64, _only_match(r"WF delta: (.+)$", _extract_output(first_frame, "MAIN")))
+    dt = parse(Float64, _only_match(r"WF measurement interval dt : (.+)$", _extract_output(first_frame, "MAIN")))
+
+    return DataFrame(integrator=integrator,
+                    ranlux=ranlux,
+                    tmax=tmax,
+                    N_meas=N_meas,
+                    ϵ₀=ϵ₀,
+                    Δ=Δ,
+                    dt=dt)
+end
+function load_sf(path)
+    output = split(read(path, String), '\n')
+
+    outer = []
+    inner = []
+
+    for i in output
+        if(match(CONF_REGEX, i) !== nothing)
+            push!(outer, inner)
+            inner = []
+        end
+        push!(inner, i)
+    end
+    push!(outer, inner)
+    outer = join.(outer, '\n')
+
+    outer = _convert_outformat_to_dataframe.(outer)
+    df = DataFrame(confno = Int[], accepted = Bool[], time = Union{Float64, Missing}[], dH =  Union{Float64, Missing}[], e⁻ᵈᴴ = Union{Float64, Missing}[], plaquette = Union{Float64, Missing}[])
+
+    for i in outer[2:end]
+        dH = parse(Float64, split(split(_extract_output(i, "HMC")[1])[3], "]")[1])
+        e⁻ᵈᴴ = parse(Float64, split(split(_extract_output(i, "HMC")[1])[5], "]")[1])
+        accepted = (only(match(r"Configuration (rejected|accepted).", _extract_output(i, "HMC")[2]).captures) == "accepted")
+        plaq = missing
+        try
+            plaq = parse(Float64, split(only([i for i in _extract_output(i, "MAIN") if occursin("Plaquette:", i)]))[2])
+        catch e
+        end
+        t = match(TIME_REGEX, _extract_output(i, "MAIN")[1]).captures
+        time = parse(Int, t[2]) + 1e-6*parse(Int, t[3])
+        confno = parse(Int, t[1])
+#        push!(df, (confno, time, parse(Float64, hmc[1]), parse(Float64, hmc[2])))
+        push!(df, (confno, accepted, time, dH, e⁻ᵈᴴ, plaq))
+    end
+    return df
 end
 
 function _extract_wf_metadata(first_frame::DataFrame)

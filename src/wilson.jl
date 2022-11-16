@@ -1,22 +1,17 @@
 using Plots
 using LsqFit
 
-theme(:dracula)
-default(size = (900, 700))
-
 include("parser.jl")
 include("utilities.jl")
 
-@info "RipRep Wilson flow code activated."
-
-function plot_w(wf, range = :all; _bang = false)
+function plot_w(wf, range = :all; _bang = false, title = "")
     plot_func = _bang ? plot! : plot
     data = wf.analysis
     if range == :all
         range = data[1, :t][2:end-1]
     end
     index = _wf_time_to_index_w(wf, range[1]):_wf_time_to_index_w(wf, range[end])
-    plot_func(index.*wf.metadata.dt, mean(data[:, :W])[index], yerr = _bootstrap(data[:, :W])[index])
+    plot_func(index.*wf.metadata.dt, mean(data[:, :W])[index], yerr = _bootstrap(data[:, :W])[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$W(t)\$")
 end
@@ -25,25 +20,20 @@ function plot_w!(wf, range = :all)
     plot_w(wf, range, _bang = true)
 end
 
-function plot_t2e(wf, range = :all, nboot = 1000)
+function plot_tc(wf; title="")
+    t = first(findall(x -> x == 1, wf.data[end,:].W .> 1))
+    plot(1:nrow(wf.data), [i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
+end
+
+function plot_t2e(wf, range = :all; nboot = 1000, title="")
     data = wf.analysis
     if range == :all
         range = data[1, :t]
     end
     index = _wf_time_to_index(wf, range[1]):_wf_time_to_index(wf, range[end])
-    plot(index.*wf.metadata.dt, mean(data[:, :t²E])[index], yerr = _bootstrap(data[:, :t²E], nboot)[index])
+    plot(index.*wf.metadata.dt, mean(data[:, :t²E])[index], yerr = _bootstrap(data[:, :t²E], nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$t^2E(t)\$")
-end
-
-function plot_t2e!(wf, range = :all)
-    if range == :all
-        range = data[1, :t]
-    end
-    data = wf.analysis
-    plot!(range, mean(data[:, :t²E]), yerr = _bootstrap(data[:, :t²E]))
-    xlabel!("\$t\$")
-    ylabel!("\$t^2E\$")
 end
 
 function _bootstrap(data, nboot = 1000)
@@ -125,9 +115,18 @@ function error_on_error_t0(wf, window; nboot = 100, ref = 1.0)
     return hcat(mean(t0)..., std(t0)...)
 end
 
-function wf_plot_error_on_error(wf, window, maxbin, type; nboot = 100, ref = 1.0, method = :equal)
+function wf_plot_error_on_error(wf, window, binrange, type; nboot = 100, ref = 1.0, method = :equal)
+    if type == :w0
+        l1, l2 = mean(wf.data[:, :W])[[_wf_time_to_index_w(wf, window[1]), _wf_time_to_index_w(wf, window[2])]]
+    elseif type == :t0
+        l1, l2 = mean(wf.data[:, :t²E])[[_wf_time_to_index(wf, window[1]), _wf_time_to_index(wf, window[2])]]
+    end
+    if l1 > ref || l2 < ref
+        @error "Wrong bounds" * string(window)
+        return
+    end
     res = []
-    for i in 1:maxbin
+    for i in binrange
         thermalise_bin!(wf, 1, i, method = method)
         if type == :w0
             push!(res, error_on_error_w0(wf, window, nboot = nboot, ref = ref))
@@ -136,7 +135,7 @@ function wf_plot_error_on_error(wf, window, maxbin, type; nboot = 100, ref = 1.0
         end
     end
     res = vcat(res...)
-    plot(1:maxbin, res[:,3], yerr = res[:,4])
+    plot(binrange, res[:,3], yerr = res[:,4])
 end
 
 function reference_time(yref, c, cvar, m, mvar, cov = 0)
