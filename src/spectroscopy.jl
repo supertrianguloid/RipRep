@@ -1,6 +1,7 @@
 using Plots
 using Statistics
 using LsqFit
+using Roots
 
 include("parser.jl")
 include("utilities.jl")
@@ -100,8 +101,6 @@ function plot_residuals(ens::Ensemble, correlator::Symbol, tmax ;nstates = 1, p0
     end
     plot(1:tmax-3, resid, yaxis = :log)
 end
-
-
 
 function plot_fit(ens::Ensemble, correlator::Symbol, trange; plotrange = :default, nstates = 1, log = true, p0 = :random)
     T = ens.global_metadata.T
@@ -305,4 +304,11 @@ function plot_fps_error(ensemble, therm, maxbins; folded = true, piwindow, piini
         thermalise_bin!(ensemble, therm, i, method = method);
         push!(vals, fps(ensemble, folded = folded, nboot = nboot, piwindow = piwindow, piinitial = piinitial, pcacwindow = pcacwindow)[2])
     end
+end
+
+function analyse_and_save(ensemblename)
+    path = "/home/laurence/projects/RipRep/data/Prepared/"
+    ensemble = load_ensemble(path * ensemblename * "/out_0");
+    wf = load_wilson_flow(path * ensemblename * "/out_wf");
+    params = load_wilson_flow()
 end

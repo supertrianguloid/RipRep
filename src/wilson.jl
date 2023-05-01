@@ -21,8 +21,23 @@ function plot_w!(wf, range = :all)
 end
 
 function plot_tc(wf; title="")
-    t = first(findall(x -> x == 1, wf.data[end,:].W .> 1))
+    a = findall(x -> x == 1, mean(wf.data[:,:W]) .> 1)
+    if !isempty(a)
+        t = first(a)
+    else
+        t = length(wf.data.t[1])÷2
+    end
     plot(1:nrow(wf.data), [i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
+end
+
+function plot_tc_hist(wf; title="")
+    a = findall(x -> x == 1, mean(wf.data[:,:W]) .> 1)
+    if !isempty(a)
+        t = first(a)
+    else
+        t = length(wf.data.t[1])÷2
+    end
+    histogram([i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
 end
 
 function plot_t2e(wf, range = :all; nboot = 1000, title="")

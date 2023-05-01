@@ -97,6 +97,9 @@ function parse_output_file(path::String)
 
     global_metadata.Runs = [nrow(run_metadata)]
     global_metadata.Confs = [nrow(data)]
+    if(all(data.eig_max .=== missing) && all(data.eig_min .=== missing))
+        select!(data, Not([:eig_max, :eig_min]))
+    end
     global_metadata.MissingConfigurations = [data[([any(r) for r in eachrow(ismissing.(data))]), :].conf_no]
 
     return global_metadata, run_metadata, data
@@ -192,7 +195,7 @@ function extract_data_from_run(run::DataFrame)
 
     confs = [join(i, '\n') for i in outer]
 
-    df = DataFrame([Int64[], Int64[], Float64[], Union{Bool, Missing}[], Union{Float64, Missing}[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :run_no, :time, :accepted, :plaquette, observables...])
+    df = DataFrame([Int64[], Int64[], Float64[], Union{Bool, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[],Union{Float64, Missing}[],Union{Float64, Missing}[],Union{Float64, Missing}[], Union{Float64, Missing}[],Union{Float64, Missing}[],Union{Float64, Missing}[], fill(Vector{Union{OffsetVector{Float64, Vector{Float64}}, Missing}}(), length(observables))...], [:conf_no, :run_no, :time, :accepted, :dS, :Polyakov_0, :Polyakov_1, :Polyakov_2, :Polyakov_3, :eig_min, :eig_max, :plaquette, observables...])
     for i in confs[2:end]
 
         time = missing
@@ -218,6 +221,53 @@ function extract_data_from_run(run::DataFrame)
         catch e
         end
 
+        dS = missing
+        try
+            dS = only(match(r"\[DeltaS = (.*)\]\[exp", i).captures)
+            dS = parse(Float64, dS)
+        catch e
+        end
+
+        Polyakov_0 = missing
+        try
+            Polyakov_0 = only(match(r"Polyakov direction 0 = (.*)", i).captures)
+            Polyakov_0 = parse(Float64, split(Polyakov_0)[1])
+        catch e
+        end
+        Polyakov_1 = missing
+        try
+            Polyakov_1 = only(match(r"Polyakov direction 1 = (.*)", i).captures)
+            Polyakov_1 = parse(Float64, split(Polyakov_1)[1])
+        catch e
+        end
+        Polyakov_2 = missing
+        try
+            Polyakov_2 = only(match(r"Polyakov direction 2 = (.*)", i).captures)
+            Polyakov_2 = parse(Float64, split(Polyakov_2)[1])
+        catch e
+        end
+        Polyakov_3 = missing
+        try
+            Polyakov_3 = only(match(r"Polyakov direction 3 = (.*)", i).captures)
+            Polyakov_3 = parse(Float64, split(Polyakov_3)[1])
+        catch e
+        end
+
+        eig_min = missing
+        try
+            eig_min = only(match(r"Eig 0 = (.*)", i).captures)
+            eig_min = parse(Float64, eig_min)
+        catch e
+        end
+
+        eig_max = missing
+        try
+            eig_max = only(match(r"Max_eig = (.*)", i).captures)
+            eig_max = parse(Float64, split(eig_max)[1])
+        catch e
+        end
+
+
         for obs in observables
             try
                 # v = parse.(Float64, split(only(match(r"conf #" * String(confno) * r".*" * String(obs) * r"=(.*)", i).captures), ' ', keepempty=false))
@@ -228,7 +278,7 @@ function extract_data_from_run(run::DataFrame)
                 push!(d, missing)
             end
         end
-        push!(df, [confno, 0, time, status, d...])
+        push!(df, [confno, 0, time, status, dS, Polyakov_0, Polyakov_1, Polyakov_2, Polyakov_3, eig_min, eig_max, d...])
     end
     return df
 end
