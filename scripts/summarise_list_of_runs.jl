@@ -1,4 +1,4 @@
-#!/usr/bin/julia
+#!julia
 include(Base.source_dir()*"/../src/parser.jl")
 using CSV
 
