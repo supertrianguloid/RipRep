@@ -5,6 +5,7 @@ using CSV
 ensembles = []
 
 for line in readlines(ARGS[1])
+    println("Processing " * line)
     push!(ensembles, only(load_ensemble(line).global_metadata))
 end
 
