@@ -130,7 +130,12 @@ function _prune_runs(runs::Vector{DataFrame})
 end
 
 function extract_global_metadata(first_frame::DataFrame)
-    ranlux = only(match(r"^RLXD (.+)", only(_extract_output(first_frame, "SETUP_RANDOM"))).captures)
+    ranlux = missing
+    try
+        ranlux = only(match(r"^RLXD (.+)", only(_extract_output(first_frame, "SETUP_RANDOM"))).captures)
+    catch e
+        print("Error extracing SETUP_RANDOM")
+    end
     action = _extract_output(first_frame, "ACTION")
     T = parse(Int64, split(split(_extract_output(first_frame,"GEOMETRY_INIT")[1])[end], "x")[1])
     L = parse(Int64, split(split(_extract_output(first_frame,"GEOMETRY_INIT")[1])[end], "x")[end])
