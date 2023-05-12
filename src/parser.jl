@@ -122,7 +122,19 @@ function extract_run_metadata(runs)
         metadata[:csw] = parse(Float64, only(_extractor_only_one_matching_line(r"^Coefficient: reset to csw = (.*)$", "CLOVER", run, vital=true)))
         metadata[:rng] = filter(row -> row.name == "SETUP_RANDOM", run).output
         metadata[:β] = parse(Float64, _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = gauge, beta = (.*)$", "ACTION", run, vital=true)[3])
-        metadata[:m0] = parse(Float64, _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = tm_alt, mass = (.*), mu = (.*), force_prec = (.*), mt_prec = (.*)$", "ACTION", run, vital=true)[3])
+        tm_alt = _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = tm_alt, mass = (.*), mu = (.*), force_prec = (.*), mt_prec = (.*)$", "ACTION", run)
+        hmc = _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = hmc, mass = (.*), force_prec = (.*), mt_prec = (.*)$", "ACTION", run)
+        
+
+        if(tm_alt != nothing)
+            metadata[:m0] = parse(Float64, tm_alt[3])
+        else
+            metadata[:m0] = parse(Float64, hmc[3])
+        end
+            
+            
+        
+            
 
         metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true)), "x")), 0:3)
         
