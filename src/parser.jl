@@ -40,13 +40,19 @@ function load_output_file_as_dataframe(path::String)
     return df
 end
 
-function extract_global_metadata(output_df::DataFrame, run_metadata::DataFrame)
+function extract_global_metadata(output_df::DataFrame, data::DataFrame, run_metadata::DataFrame)
     global_metadata = Dict{Any, Any}(:rng => missing)
     try
         global_metadata[:rng] = only(output_df[output_df.name .== "SETUP_RANDOM", :].output)
     catch error
         @warn "Error extracting SETUP_RANDOM:" error
     end
+
+    global_metadata[:nconfs] = length(data.confno)
+
+    global_metadata[:csw] = only(union(run_metadata.csw))
+    global_metadata[:β] = only(union(run_metadata[:, :β]))
+    global_metadata[:m0] = only(union(run_metadata[:, :m0]))
 
     global_metadata[:integrator_changes] = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
@@ -99,7 +105,7 @@ function file_health_checks(output_df::DataFrame)
 end
 
 function extract_run_metadata(runs)
-    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], action=Any[], clover=Any[], rng=Any[], geometry=OffsetArray[])
+    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], action=Any[], csw=Float64[], rng=Any[], β=Float64[], m0=Float64[], geometry=OffsetArray[])
     for run_number in 1:length(runs)
         metadata = Dict()
         metadata[:finished_cleanly] = false
@@ -113,13 +119,15 @@ function extract_run_metadata(runs)
         metadata[:warnings] = filter(row -> row.name == "WARNING", run).output
         metadata[:integrator] = filter(row -> row.name == "INTEGRATOR", run).output
         metadata[:action] = filter(row -> row.name == "ACTION", run).output
-        metadata[:clover] = filter(row -> row.name == "CLOVER", run).output
+        metadata[:csw] = parse(Float64, only(_extractor_only_one_matching_line(r"^Coefficient: reset to csw = (.*)$", "CLOVER", run, vital=true)))
         metadata[:rng] = filter(row -> row.name == "SETUP_RANDOM", run).output
+        metadata[:β] = parse(Float64, _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = gauge, beta = (.*)$", "ACTION", run, vital=true)[3])
+        metadata[:m0] = parse(Float64, _extractor_only_one_matching_line(r"^Monomial (.*): level = (.*), type = tm_alt, mass = (.*), mu = (.*), force_prec = (.*), mt_prec = (.*)$", "ACTION", run, vital=true)[3])
 
         metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true)), "x")), 0:3)
         
         
-        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:clover], metadata[:rng], metadata[:geometry]]) 
+        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:geometry]]) 
     end
     return runs_metadata
 end
@@ -221,8 +229,12 @@ function extract_trajectory_data(trajectories)
     return traj_data
 end
 
-function _extractor_only_one_matching_line(regex, name, df; vital=false)
+
+function _extractor_only_one_matching_line(regex, name, df; vital=false, multiple_but_unique_okay=false)
     matching_line = filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
+    if(multiple_but_unique_okay)
+        matching_line = Set(matching_line)
+    end
     try
         return match(regex, only(matching_line)).captures
     catch e
@@ -287,8 +299,6 @@ function load_ensemble(path::String)
     run_metadata = extract_run_metadata(runs)
     @info "Checking runs health..."
     run_health_checks(run_metadata)
-    @info "Extracting global metadata..."
-    global_metadata = extract_global_metadata(output_df, run_metadata)
     @info "Extracting trajectories..."
     trajectories = split_run_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
@@ -297,5 +307,7 @@ function load_ensemble(path::String)
     trajectory_health_checks(trajectory_data)
     @info "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
+    @info "Extracting global metadata..."
+    global_metadata = extract_global_metadata(output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)
 end

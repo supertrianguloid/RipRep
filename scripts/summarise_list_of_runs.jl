@@ -1,12 +1,14 @@
 #!julia
 include(Base.source_dir()*"/../src/parser.jl")
-using CSV
 
 ensembles = []
 
 for line in readlines(ARGS[1])
     println("Processing " * line)
-    push!(ensembles, only(load_ensemble(line).global_metadata))
+    push!(ensembles, load_ensemble(line).global_metadata)
 end
 
-CSV.write(ARGS[2], DataFrame(ensembles))
+println("|beta|csw|m0|T|L|nconfs|")
+for ensemble in ensembles
+    println("|" * string(ensemble[:β]) * "|" * string(ensemble[:csw]) * "|" * string(ensemble[:m0]) * "|" * string(ensemble[:geometry][0]) * "|" * string(ensemble[:geometry][1]) * "|" * string(ensemble[:nconfs]) * "|")
+end
