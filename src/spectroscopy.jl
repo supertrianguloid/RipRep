@@ -32,6 +32,7 @@ function default_thermalise_bin!(ens; bin = false)
     elseif N > 750
         therm = 500
     else
+        @warn "Short run (N < 750), not thermalising!"
         therm = 1
     end
 
