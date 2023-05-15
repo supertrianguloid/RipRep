@@ -314,7 +314,6 @@ function run_to_first_conf(data::DataFrame, run_number::Integer)
     confs_from_run = filter(:runno => runno -> runno == run_number, data)
     return only(describe(confs_from_run, cols=:confno, :min).min)
 end
-   
 
 function load_ensemble(path::String)
     @info "Loading the output file..."
