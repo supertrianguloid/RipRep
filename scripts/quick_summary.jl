@@ -14,6 +14,7 @@ println(ens.data[end, [:confno, :accepted, :time, :plaquette]])
 println()
 
 @info "Statistics since last integrator change: "
+println("Number of confs since last change: ", nrow(data_since_last_change))
 println(describe(data_since_last_change, :mean, :median, cols=[:accepted, :time, :plaquette]))
 println()
         
