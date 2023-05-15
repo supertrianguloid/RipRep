@@ -24,7 +24,7 @@ end
 
 function load_output_file_as_dataframe(path::String)
     df = DataFrame(lineno=Int[], name=String[], loglevel=Int[], output=String[])
-    line_regex = r"^\[([a-zA-Z_]+)\]\[([0-9]+)\](.*)"
+    line_regex = r"^\[([a-zA-Z_]+)\]\[(-?[0-9]+)\](.*)"
     lineno = 0
     for line in eachline(open(path))
         lineno += 1
