@@ -1,5 +1,6 @@
 using DataFrames
 using OffsetArrays
+using SHA
 
 RUN_BEGIN = "Gauge group: SU(2)"
 TRAJ_BEGIN_REGEX = r"Trajectory #(.*)\.\.\.$"
@@ -40,8 +41,9 @@ function load_output_file_as_dataframe(path::String)
     return df
 end
 
-function extract_global_metadata(output_df::DataFrame, data::DataFrame, run_metadata::DataFrame)
+function extract_global_metadata(path::String, output_df::DataFrame, data::DataFrame, run_metadata::DataFrame)
     global_metadata = Dict{Any, Any}(:rng => missing)
+    
     try
         global_metadata[:rng] = only(output_df[output_df.name .== "SETUP_RANDOM", :].output)
     catch error
@@ -54,9 +56,18 @@ function extract_global_metadata(output_df::DataFrame, data::DataFrame, run_meta
     global_metadata[:β] = only(union(run_metadata[:, :β]))
     global_metadata[:m0] = only(union(run_metadata[:, :m0]))
 
-    global_metadata[:integrator_changes] = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
+    runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
+    global_metadata[:integrator_changes] = [run_to_first_conf(data, i) for i in runs_where_the_integrator_changes]
+                                                
     global_metadata[:geometry] = only(union(run_metadata.geometry))
+
+    global_metadata[:path] = path
+
+
+    open(path) do f
+        global_metadata[:sha256] = bytes2hex(sha2_256(f))
+    end
     
     return global_metadata
 end
@@ -299,6 +310,12 @@ function add_run_number_to_output_df(output_df::DataFrame)
     return output_df
 end
 
+function run_to_first_conf(data::DataFrame, run_number::Integer)
+    confs_from_run = filter(:runno => runno -> runno == run_number, data)
+    return only(describe(confs_from_run, cols=:confno, :min).min)
+end
+   
+
 function load_ensemble(path::String)
     @info "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
@@ -320,6 +337,6 @@ function load_ensemble(path::String)
     @info "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
     @info "Extracting global metadata..."
-    global_metadata = extract_global_metadata(output_df, data, run_metadata)
+    global_metadata = extract_global_metadata(path, output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)
 end

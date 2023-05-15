@@ -8,7 +8,7 @@ for line in readlines(ARGS[1])
     push!(ensembles, load_ensemble(line).global_metadata)
 end
 
-println("|beta|csw|m0|T|L|nconfs|")
+println("|beta|csw|m0|T|L|nconfs|path|sha256|")
 for ensemble in ensembles
-    println("|" * string(ensemble[:β]) * "|" * string(ensemble[:csw]) * "|" * string(ensemble[:m0]) * "|" * string(ensemble[:geometry][0]) * "|" * string(ensemble[:geometry][1]) * "|" * string(ensemble[:nconfs]) * "|")
+    println("|" * string(ensemble[:β]) * "|" * string(ensemble[:csw]) * "|" * string(ensemble[:m0]) * "|" * string(ensemble[:geometry][0]) * "|" * string(ensemble[:geometry][1]) * "|" * string(ensemble[:nconfs]) * "|" * ensemble[:path] * "|" * ensemble[:sha256] * "|")
 end
