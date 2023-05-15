@@ -7,6 +7,9 @@ TRAJ_BEGIN_REGEX = r"Trajectory #(.*)\.\.\.$"
 TRAJ_GENERATED_REGEX = r"Trajectory #(.*): generated in \[(.*) sec (.*) usec\]$"
 ACCEPT_REJECT_REGEX = r"^Configuration (rejected|accepted).$"
 DS_REGEX = r"^\[DeltaS = (.*)\]\[exp\(-DS\) = (.*)\]$"
+WF_TRAJ_BEGIN_REGEX = r"^Configuration from (.*)$"
+WF_TRAJ_BEGIN_REGEX_RUN_NUMBER = r"^Configuration from .*n([0-9]+)$"
+WF_MEASUREMENT_REGEX = r"^WF \(t,E,t2\*E,Esym,t2\*Esym,TC\) = (.*)$"
 CORRELATORS = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
 
 mutable struct Ensemble
@@ -109,6 +112,29 @@ function split_run_dataframe_into_trajectories(runs)
     return trajectories
 end
 
+function split_wf_dataframe_into_trajectories(runs)
+    trajectories = []
+    for run_number in 1:length(runs)
+        run_df = runs[run_number]
+        traj_boundaries = filter([:name, :output] => (name, output) -> name == "MAIN" && !isnothing(match(WF_TRAJ_BEGIN_REGEX, output)), run_df, view=true).lineno
+        if length(traj_boundaries) == 1
+            push!(trajectories, run_df)
+            continue
+        end
+        first_traj = only(describe(run_df, cols=:lineno, :min).min):(traj_boundaries[2] - 1)
+        trajectory = filter(:lineno => lineno -> lineno ∈ first_traj, run_df, view=true)
+        push!(trajectories, trajectory)
+        for i in 2:(length(traj_boundaries) - 1)
+            trajectory = filter(:lineno => lineno -> lineno ∈ traj_boundaries[i]:(traj_boundaries[i+1] - 1), run_df, view=true)
+            push!(trajectories, trajectory)
+        end
+        last_traj = last(traj_boundaries):only(describe(run_df, cols=:lineno, :max).max)
+        trajectory = filter(:lineno => lineno -> lineno ∈ last_traj, run_df, view=true)
+        push!(trajectories, trajectory)
+    end
+    return trajectories
+end
+
 function file_health_checks(output_df::DataFrame)
     if output_df[1, :].output != RUN_BEGIN
         @warn "File does not start with a run: " output_df[1, :].output
@@ -142,10 +168,6 @@ function extract_run_metadata(runs)
         else
             metadata[:m0] = parse(Float64, hmc[3])
         end
-            
-            
-        
-            
 
         metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true)), "x")), 0:3)
         
@@ -252,6 +274,33 @@ function extract_trajectory_data(trajectories)
     return traj_data
 end
 
+function extract_wf_trajectory_data(trajectories)
+    obs = [:t, :E, :t2E, :Esym, :t2Esym, :TC]
+    traj_data = DataFrame([Int[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, obs...])
+
+    for traj in trajectories
+        data = Dict()
+        data[:confno] = parse(Int, only(_extractor_only_one_matching_line(WF_TRAJ_BEGIN_REGEX_RUN_NUMBER, "MAIN", traj, vital=true)))
+
+        meas = []
+
+        meas_lines = filter(:name => name -> name == "WILSONFLOW", traj).output
+        for line in meas_lines
+            push!(meas, parse.(Float64, split(only(match(WF_MEASUREMENT_REGEX, line).captures))))
+        end
+        meas = hcat(meas...)'
+        data[:t] = meas[:, 1]
+        data[:E] = meas[:, 2]
+        data[:t2E] = meas[:, 3]
+        data[:Esym] = meas[:, 4]
+        data[:t2Esym] = meas[:, 5]
+        data[:TC] = meas[:, 6]
+
+        push!(traj_data, [data[:confno], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC]])
+    end
+    
+    return traj_data
+end
 
 function _extractor_only_one_matching_line(regex, name, df; vital=false, multiple_but_unique_okay=false)
     matching_line = filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
@@ -339,3 +388,19 @@ function load_ensemble(path::String)
     global_metadata = extract_global_metadata(path, output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)
 end
+
+function load_wilsonflow(path::String)
+    @info "Loading the output file..."
+    output_df = load_output_file_as_dataframe(path)
+    @info "Checking file health..."
+    file_health_checks(output_df)
+    @info "Extracting runs..."
+    output_df = add_run_number_to_output_df(output_df)
+    runs = split_output_dataframe_into_runs(output_df, keep_runs_without_trajectories=true)
+    @info "Extracting trajectories..."
+    trajectories = split_wf_dataframe_into_trajectories(runs)
+    @info "Extracting trajectory data..."
+    trajectory_data = extract_wf_trajectory_data(trajectories)
+    return trajectory_data
+end
+    
