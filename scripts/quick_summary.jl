@@ -3,7 +3,7 @@ include(Base.source_dir()*"/../src/parser.jl")
 ens = load_ensemble(ARGS[1])
 
 if !isempty(ens.global_metadata[:integrator_changes])
-    data_since_last_change = filter(:confno => confno -> confno > max(ens.global_metadata[:integrator_changes]...), ens.data)
+    data_since_last_change = filter(:confno => confno -> confno >= max(ens.global_metadata[:integrator_changes]...), ens.data)
 else
     data_since_last_change = ens.data
 end
