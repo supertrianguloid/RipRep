@@ -265,7 +265,8 @@ function extract_trajectory_data(trajectories)
                 data[:completed] = false
                 push!(corrs, missing)
             else
-                push!(corrs, parse.(Float64, split(only(corrtemp))))
+                c = parse.(Float64, split(only(corrtemp)))
+                push!(corrs, OffsetVector(c, 0:(length(c) - 1)))
             end
         end
 
