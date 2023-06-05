@@ -91,8 +91,8 @@ function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randoms
 end
 
 function effective_fps(df::DataFrame, T, L)
-    meff = effective_mass(mean(df[:, :g5_folded]), T)[1:end-1]
-    gps = effective_gps(mean(df[:, :g5_folded]), T, L)[1:end-1]
+    meff = effective_mass(mean(df[:, :g5_folded]), T)[1:end]
+    gps = effective_gps(mean(df[:, :g5_folded]), T, L)[1:end]
     pcac = effective_pcac(df)
     return 2 .* (pcac./(meff.^2)).*gps
 end
