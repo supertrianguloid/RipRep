@@ -20,7 +20,7 @@ mutable struct Ensemble
 end
 
 mutable struct WilsonFlow
-    metadata::DataFrame
+    metadata::Dict
     data::DataFrame
     analysis::DataFrame
 end
@@ -176,6 +176,15 @@ function extract_run_metadata(runs)
     end
     return runs_metadata
 end
+
+function extract_wf_metadata(first_run)
+    wf_metadata = Dict{Any, Any}()
+    wf_metadata[:delta] = parse(Float64, only(_extractor_only_one_matching_line(r"^WF delta: (.*)$", "MAIN", first_run)))
+    wf_metadata[:dt] = parse(Float64, only(_extractor_only_one_matching_line(r"^WF measurement interval dt : (.*)$", "MAIN", first_run)))
+    
+    return wf_metadata
+end
+
 
 function extract_trajectory_data(trajectories)
     TRAJ_MEASUREMENTS = [:accepted, :time, :plaquette, :dS, :maxeig, :mineig, :adjoint_polyakov, :fundamental_polyakov]
@@ -365,6 +374,17 @@ function run_to_first_conf(data::DataFrame, run_number::Integer)
     return only(describe(confs_from_run, cols=:confno, :min).min)
 end
 
+function post_process_correlators(trajectory_data)
+    trajectory_data[:, :gk] = (trajectory_data[:, :g1] + trajectory_data[:, :g2] + trajectory_data[:, :g3])/3
+    trajectory_data[:, :dg5_g0g5_re] = _corr_derivative(trajectory_data[:, :g5_g0g5_re])
+    trajectory_data[:, :gk_folded] = _fold(trajectory_data[:, :gk])
+    trajectory_data[:, :g5_folded] = _fold(trajectory_data[:, :g5])
+    trajectory_data[:, :id_folded] = _fold(trajectory_data[:, :id])
+    trajectory_data[:, :g5_g0g5_re_folded] = _fold(trajectory_data[:, :g5_g0g5_re], symm = false)
+    trajectory_data[:, :dg5_g0g5_re_folded] = _corr_derivative(trajectory_data[:, :g5_g0g5_re_folded], last_point_antisymmetric = true)
+    return trajectory_data
+end
+
 function load_ensemble(path::String)
     @info "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
@@ -381,6 +401,8 @@ function load_ensemble(path::String)
     trajectories = split_run_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
     trajectory_data = extract_trajectory_data(trajectories)
+    @info "Post-processing correlators"
+    trajectory_data = post_process_correlators(trajectory_data)
     @info "Checking trajectory health..."
     trajectory_health_checks(trajectory_data)
     @info "Dropping missing configurations..."
@@ -402,6 +424,6 @@ function load_wilsonflow(path::String)
     trajectories = split_wf_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
     trajectory_data = extract_wf_trajectory_data(trajectories)
-    return trajectory_data
+    return WilsonFlow(extract_wf_metadata(runs[1]), trajectory_data, trajectory_data)
 end
     

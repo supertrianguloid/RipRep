@@ -11,7 +11,7 @@ function plot_w(wf, range = :all; _bang = false, title = "")
         range = data[1, :t][2:end-1]
     end
     index = _wf_time_to_index_w(wf, range[1]):_wf_time_to_index_w(wf, range[end])
-    plot_func(index.*wf.metadata.dt, mean(data[:, :W])[index], yerr = _bootstrap(data[:, :W])[index], title=title, legend=false)
+    plot_func(index.*wf.metadata[:dt], mean(data[:, :W])[index], yerr = _bootstrap(data[:, :W])[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$W(t)\$")
 end
@@ -46,7 +46,7 @@ function plot_t2e(wf, range = :all; nboot = 1000, title="")
         range = data[1, :t]
     end
     index = _wf_time_to_index(wf, range[1]):_wf_time_to_index(wf, range[end])
-    plot(index.*wf.metadata.dt, mean(data[:, :t²E])[index], yerr = _bootstrap(data[:, :t²E], nboot)[index], title=title, legend=false)
+    plot(index.*wf.metadata[:dt], mean(data[:, :t2E])[index], yerr = _bootstrap(data[:, :t2E], nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$t^2E(t)\$")
 end
