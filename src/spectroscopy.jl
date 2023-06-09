@@ -1,8 +1,8 @@
-using Base: parentmodule_before_main
 using Plots
 using Statistics
 using Roots
 using LsqFit
+using DataFrames
 
 include("parser.jl")
 include("utilities.jl")
@@ -22,13 +22,13 @@ function plot_plaquette!(ens; range = :default)
     plot_plaquette(ens, range=range, _bang=true)
 end
 
-function plot_correlator(ens, corr, range = :default; binsize = 1, log::Bool=true, _bang = false)
+function plot_correlator(ens, corr, range = :default; binsize = 1, nboot=1000, log::Bool=true, _bang = false)
     if range == :default
         range = eachindex(ens.analysis[1, corr])
     end
     correlator = ens.analysis[:, corr]
     plot_func = _bang ? plot! : plot
-    plot_func(Array(range), parent(mean(correlator)[range]), yerr = parent((std(correlator, corrected=true)/sqrt(length(correlator)))[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens), titlefontsize = TITLE_FONT_SIZE)
+    plot_func(Array(range), parent(mean(correlator)[range]), yerr = parent(standard_error(correlator, binsize=binsize, nboot=nboot)[range]), yaxis = log ? :log : :identity, label = String(corr), title = title = _ensemble_to_latex_string(ens), titlefontsize = TITLE_FONT_SIZE)
     xlabel!("\$τ\$")
 end
 
@@ -37,8 +37,8 @@ function h(T, τ, E₁, E₂)
 end
 
 function effective_pcac(df::DataFrame)
-    T = length(df[1, :g5])
-    meff = effective_mass(mean(df[:, :g5_folded]), T)
+    t = length(df[1, :g5])
+    meff = effective_mass(mean(df[:, :g5_folded]), t)
     return  0.5 .* meff./sinh.(meff) .* mean(df[:, :dg5_g0g5_re_folded])./(mean(df[:, :g5_folded])[1:end])
 end
 
@@ -55,7 +55,7 @@ function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, n
     fit = []
     for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
-        μ, σ = pcac_effective_mass(subsample, 1, binmethod=binmethod, nboot=nboot)
+        μ, σ = bootstrap_effective_pcac(subsample, 1, binmethod=binmethod, nboot=nboot)
         push!(fit, only(fit_const(fitting_range, μ, σ).param))
     end
     μ = mean(fit)
@@ -90,6 +90,19 @@ function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randoms
     return mean(gps), std(gps)
 end
 
+function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
+    L = last(ens.global_metadata[:geometry])
+    fit = []
+    for i in 1:nboot
+        subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+        μ, σ = bootstrap_effective_gps(subsample, L, 1, binmethod=binmethod, nboot=nboot)
+        push!(fit, only(fit_const(fitting_range, μ, σ).param))
+    end
+    μ = mean(fit)
+    σ = std(fit)
+    return μ, σ
+end
+
 function effective_fps(df::DataFrame, T, L)
     meff = effective_mass(mean(df[:, :g5_folded]), T)[1:end]
     gps = effective_gps(mean(df[:, :g5_folded]), T, L)[1:end]
@@ -104,6 +117,20 @@ function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :rand
         push!(fps, effective_fps(subsample, T, L))
     end
     return mean(fps), std(fps)
+end
+
+function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
+    L = last(ens.global_metadata[:geometry])
+    T = first(ens.global_metadata[:geometry])
+    fit = []
+    for i in 1:nboot
+        subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+        μ, σ = bootstrap_effective_fps(subsample, T, L, 1, binmethod=binmethod, nboot=nboot)
+        push!(fit, only(fit_const(fitting_range, μ, σ).param))
+    end
+    μ = mean(fit)
+    σ = std(fit)
+    return μ, σ
 end
 
 function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = 1000)
@@ -123,11 +150,11 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     return μ, σ
 end
 
-function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, range = :default, nboot = 1000)
+function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = 1000)
     fit = []
     for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
-        μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, range=range, nboot=nboot)
+        μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot)
         push!(fit, only(fit_const(fitting_range, μ, σ).param))
                
     end
@@ -136,35 +163,33 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
     return μ, σ
 end
 
-#REWRITE
-function plot_fit(ens::Ensemble, correlator::Symbol, trange; plotrange = :default, nstates = 1, log = true, p0 = :random)
-    T = ens.global_metadata[:geometry][0]
-    fit = fit_cosh(ens, correlator, trange, nstates = nstates, p0 = p0)
-    println("Residuals: ", sum(fit.resid.^2))
-    println("Fit parameters: ", fit.param)
-    corr = ens.analysis[:, correlator]
-    model(τ, params) = _cosh_model(nstates, T, τ, params)
-    if(plotrange == :default)
-        plotrange = 0:length(mean(corr)) - 1
-    end
-    #plot(plotrange, parent(mean(corr))[plotrange .+ 1], yerr = parent(std(corr, corrected=true)/sqrt(length(corr)))[plotrange .+ 1], yaxis = log ? :log : :identity, label = String(correlator), title = _ensemble_to_latex_string(ens))
-    #xlabel!("Imaginary Time \$τ\$")
-    plot_correlator(ens, correlator, plotrange, log=log)
-    #annotate!((0.25,0.25), string(fit.param))
-    plot!(trange, model(trange, fit.param), label = "$nstates state fit")    
+function plot_effective_mass(ens, corr, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+    μ, σ = bootstrap_effective_mass(ens.analysis, corr, binsize, binmethod=binmethod, nboot=nboot)
+    plot_func = _bang ? plot! : plot
+    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+end
+function plot_effective_mass!(ens, corr, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+    plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-#REWRITE
-function bootstrap_fits(ens, correlator, trange; nstates = 1, bs = 100, p0 = :random)
-    fits = []
-    residuals = []
-    stats = nrow(ens.analysis)
-    T = ens.global_metadata[:geometry][0]
-    for i ∈ 1:bs
-        data = ens.analysis[rand(1:stats, stats), correlator]
-        fit = _fit_helper(data, trange, nstates, T, p0)
-        push!(fits, fit.param)
-        push!(residuals, fit.resid)
-    end
-    return hcat(mean(fits)..., std(fits)...), hcat(residuals...)'
+function plot_pcac_mass(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+    μ, σ = bootstrap_effective_pcac(ens.analysis, binsize, binmethod=binmethod, nboot=nboot)
+    plot_func = _bang ? plot! : plot
+    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+end
+function plot_pcac_mass!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+    plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
+end
+
+
+function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+    μ, σ = fit_effective_mass(ens, corr, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    plot_const!(fitting_range, μ, σ)
+end
+    
+function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+    μ, σ = fit_pcac_mass(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    plot_const!(fitting_range, μ, σ)
 end
