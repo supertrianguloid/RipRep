@@ -40,24 +40,15 @@ function plot_tc_hist(wf; title="")
     histogram([i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
 end
 
-function plot_t2e(wf, range = :all; nboot = 1000, title="")
+function plot_t2e(wf, range = :all; binsize = 1, nboot=1000, title="")
     data = wf.analysis
     if range == :all
         range = data[1, :t]
     end
     index = _wf_time_to_index(wf, range[1]):_wf_time_to_index(wf, range[end])
-    plot(index.*wf.metadata[:dt], mean(data[:, :t2E])[index], yerr = _bootstrap(data[:, :t2E], nboot)[index], title=title, legend=false)
+    plot((index .- 1).*wf.metadata[:dt], mean(data[:, :t2E])[index], yerr = standard_error(data[:, :t2E], binsize=binsize, nboot=nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$t^2E(t)\$")
-end
-
-function _bootstrap(data, nboot = 1000)
-    l = length(data)
-    bs = []
-    for i ∈ 1:nboot
-        push!(bs, mean(data[rand(1:l, l)]))
-    end
-    return std(bs)
 end
 
 function _wf_time_to_index(wf::WilsonFlow, time)

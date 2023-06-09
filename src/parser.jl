@@ -285,8 +285,8 @@ function extract_trajectory_data(trajectories)
 end
 
 function extract_wf_trajectory_data(trajectories)
-    obs = [:t, :E, :t2E, :Esym, :t2Esym, :TC]
-    traj_data = DataFrame([Int[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, obs...])
+    obs = [:t, :E, :t2E, :Esym, :t2Esym, :TC, :W]
+    traj_data = DataFrame([Int[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, obs...])
 
     for traj in trajectories
         data = Dict()
@@ -305,8 +305,9 @@ function extract_wf_trajectory_data(trajectories)
         data[:Esym] = meas[:, 4]
         data[:t2Esym] = meas[:, 5]
         data[:TC] = meas[:, 6]
+        data[:W] = parent(d(data[:t2E])) .* data[:t][2 : end - 1]
 
-        push!(traj_data, [data[:confno], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC]])
+        push!(traj_data, [data[:confno], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC], data[:W]])
     end
     
     return traj_data

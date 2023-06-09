@@ -35,6 +35,25 @@ function get_subsample(df::DataFrame, binsize; method = :randomsample)
     # end
 end
 
+# function get_subsample(vec::Vector, binsize; method = :randomsample)
+#     offset = length(vec) % binsize + 1
+#     subsample = vec[offset:end]
+#     newlen = length(subsample) ÷ binsize
+
+#     if method == :randomsample
+#         return subsample[rand(1:length(subsample), newlen)]
+#     end
+# end
+
+function standard_error(data; binsize = 1, nboot = 1000)
+    bootstrap = []
+    for i in 1:nboot
+        sample = get_subsample(data, binsize)
+        push!(bootstrap, mean(sample))
+    end
+    return std(bootstrap)
+end
+
 function propagate_product(x, y)
     return [x[1]*y[1], sqrt((x[2]/x[1])^2 + (y[2]/y[1])^2)]
 end
