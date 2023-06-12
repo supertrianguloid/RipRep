@@ -1,6 +1,5 @@
 #!julia
 include(Base.source_dir()*"/../src/parser.jl")
-include(Base.source_dir()*"/../src/utilities.jl")
 ens = load_ensemble(ARGS[1])
 
 if !isempty(ens.global_metadata[:integrator_changes])

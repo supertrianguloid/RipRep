@@ -2,6 +2,8 @@ using DataFrames
 using OffsetArrays
 using SHA
 
+include("utilities.jl")
+
 RUN_BEGIN = "Gauge group: SU(2)"
 TRAJ_BEGIN_REGEX = r"Trajectory #(.*)\.\.\.$"
 TRAJ_GENERATED_REGEX = r"Trajectory #(.*): generated in \[(.*) sec (.*) usec\]$"
