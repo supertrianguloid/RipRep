@@ -39,7 +39,7 @@ end
 function effective_pcac(df::DataFrame)
     t = length(df[1, :g5])
     meff = effective_mass(mean(df[:, :g5_folded]), t)
-    return  0.5 .* meff./sinh.(meff) .* mean(df[:, :dg5_g0g5_re_folded])./(mean(df[:, :g5_folded])[1:end])
+    return  0.5 .* meff[1:end]./sinh.(meff[1:end]) .* mean(df[:, :dg5_g0g5_re_folded])./(mean(df[:, :g5_folded])[1:end])
 end
 
 function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsample, nboot = 100)
@@ -133,7 +133,7 @@ function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     return μ, σ
 end
 
-function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = 1000)
+function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
     meff_boot = []
     
     T = length(df[1, :g5])
@@ -141,6 +141,9 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
         c = mean(subsample[:, corr])
+        if range != :all
+            c = c[range]
+        end
         
         effective_masses = effective_mass(c, T)
         push!(meff_boot, effective_masses)
@@ -181,15 +184,53 @@ function plot_pcac_mass!(ens, binsize, plotting_range; binmethod = :randomsample
     plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
+function plot_fps(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+    L = last(ens.global_metadata[:geometry])
+    T = first(ens.global_metadata[:geometry])
+    μ, σ = bootstrap_effective_fps(ens.analysis, T, L, binsize, binmethod=binmethod, nboot=nboot)
+    plot_func = _bang ? plot! : plot
+    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+end
+function plot_fps!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+    plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
+end
+
+function plot_gps(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+    L = last(ens.global_metadata[:geometry])
+    T = first(ens.global_metadata[:geometry])
+    μ, σ = bootstrap_effective_gps(ens.analysis, L, binsize, binmethod=binmethod, nboot=nboot)
+    plot_func = _bang ? plot! : plot
+    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+end
+function plot_gps!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+    plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
+end
+
 
 function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
     μ, σ = fit_effective_mass(ens, corr, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    @show μ, σ
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
     
 function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
     μ, σ = fit_pcac_mass(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
-    plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    @show μ, σ
+    plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    plot_const!(fitting_range, μ, σ)
+end
+
+function plot_gps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+    μ, σ = fit_gps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    @show μ, σ
+    plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    plot_const!(fitting_range, μ, σ)
+end
+
+function plot_fps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+    μ, σ = fit_fps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    @show μ, σ
+    plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end

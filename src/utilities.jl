@@ -35,15 +35,15 @@ function get_subsample(df::DataFrame, binsize; method = :randomsample)
     # end
 end
 
-# function get_subsample(vec::Vector, binsize; method = :randomsample)
-#     offset = length(vec) % binsize + 1
-#     subsample = vec[offset:end]
-#     newlen = length(subsample) ÷ binsize
+function get_subsample(vec::Vector, binsize; method = :randomsample)
+    offset = length(vec) % binsize + 1
+    subsample = vec[offset:end]
+    newlen = length(subsample) ÷ binsize
 
-#     if method == :randomsample
-#         return subsample[rand(1:length(subsample), newlen)]
-#     end
-# end
+    if method == :randomsample
+        return subsample[rand(1:length(subsample), newlen)]
+    end
+end
 
 function standard_error(data; binsize = 1, nboot = 1000)
     bootstrap = []
@@ -130,7 +130,7 @@ function plot_in_range(range, μ, σ; _bang = false)
     μ = μ[range]
     σ = σ[range]
     plot_func = _bang ? plot! : plot
-    plot(range, μ, yerr = σ)
+    plot_func(range, μ, yerr = σ)
 end
 
 function plot_in_range!(range, μ, σ)
@@ -168,4 +168,9 @@ function _fold(correlator; symm = true)
         push!(corr, OffsetArray(v, 0:tmax÷2))
     end
     return corr
+end
+
+function string_to_unitrange(str::String)
+    arr = parse.(Int, split(str, ":"))
+    return first(arr):last(arr)
 end
