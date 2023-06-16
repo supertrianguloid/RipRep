@@ -4,6 +4,9 @@ include(Base.source_dir()*"/../src/parser.jl")
 include(Base.source_dir()*"/../src/spectroscopy.jl")
 include(Base.source_dir()*"/../src/utilities.jl")
 
+#Turn off plot display because we are headless
+ENV["GKSwstype"]="nul"
+
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/"
 THERM = 1000
 BINSIZE = 10
