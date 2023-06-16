@@ -423,10 +423,10 @@ function load_ensemble(path::String)
     trajectories = split_run_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
     trajectory_data = extract_trajectory_data(trajectories)
-    @info "Post-processing correlators"
-    trajectory_data = post_process_correlators(trajectory_data)
     @info "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
+    @info "Post-processing correlators"
+    trajectory_data = post_process_correlators(trajectory_data)
     @info "Extracting global metadata..."
     global_metadata = extract_global_metadata(path, output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)
