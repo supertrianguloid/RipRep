@@ -18,30 +18,33 @@ for line in readlines(ARGS[1])
     ensembles[line] = ens.global_metadata
     contains_nans = ens.global_metadata[:nan_confs] != []
     if ens.global_metadata[:nconfs] > 1100 && !contains_nans
+        corrs = [:g5_folded, :gk_folded, :id_folded]
 	thermalise!(ens, THERM)
         try
             ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
+            plot_pcac_mass(ens, BINSIZE)
+            save_figure(ensemble_path * "pcac_mass.pdf")
         catch e
         end
         try
             ensembles[line][:fps] = bootstrap_effective_fps(ens.analysis, ens.global_metadata[:geometry][0], ens.global_metadata[:geometry][1], BINSIZE)
+            plot_fps(ens, BINSIZE)
+            save_figure(ensemble_path * "fps.pdf")
         catch e
         end
         try
             ensembles[line][:gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
+            plot_gps(ens, BINSIZE)
+            save_figure(ensemble_path * "gps.pdf")
         catch e
         end
-        try
-            ensembles[line][:g5] = bootstrap_effective_mass(ens.analysis, :g5_folded, BINSIZE)
-        catch e
-        end
-        try
-            ensembles[line][:gk] = bootstrap_effective_mass(ens.analysis, :gk_folded, BINSIZE)
-        catch e
-        end
-        try
-            ensembles[line][:id] = bootstrap_effective_mass(ens.analysis, :id_folded, BINSIZE)
-        catch e
+        for corr in corrs
+            try
+                ensembles[line][corr] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
+                plot_effective_mass(ens, corr, BINSIZE)
+                save_figure(ensemble_path * "effective_mass_" * corr * ".pdf")
+            catch e
+            end
         end
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])

@@ -166,43 +166,55 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
     return μ, σ
 end
 
-function plot_effective_mass(ens, corr, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
     μ, σ = bootstrap_effective_mass(ens.analysis, corr, binsize, binmethod=binmethod, nboot=nboot)
+    if plotting_range == :all
+        plotting_range = eachindex(μ)
+    end
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_effective_mass!(ens, corr, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_effective_mass!(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_pcac_mass(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_pcac_mass(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
     μ, σ = bootstrap_effective_pcac(ens.analysis, binsize, binmethod=binmethod, nboot=nboot)
+    if plotting_range == :all
+        plotting_range = eachindex(μ)
+    end
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_pcac_mass!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_pcac_mass!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
     plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_fps(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_fps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
     μ, σ = bootstrap_effective_fps(ens.analysis, T, L, binsize, binmethod=binmethod, nboot=nboot)
+    if plotting_range == :all
+        plotting_range = eachindex(μ)
+    end
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_fps!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_fps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
     plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_gps(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_gps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
     μ, σ = bootstrap_effective_gps(ens.analysis, L, binsize, binmethod=binmethod, nboot=nboot)
+    if plotting_range == :all
+        plotting_range = eachindex(μ)
+    end
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_gps!(ens, binsize, plotting_range; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_gps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
     plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
