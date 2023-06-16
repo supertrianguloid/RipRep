@@ -43,7 +43,7 @@ for line in readlines(ARGS[1])
             try
                 ensembles[line][corr] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
                 plot_effective_mass(ens, corr, BINSIZE)
-                save_figure("effective_mass_" * corr * ".pdf")
+                save_figure("effective_mass_" * String(corr) * ".pdf")
             catch e
             end
         end
