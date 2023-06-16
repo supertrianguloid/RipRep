@@ -174,3 +174,10 @@ function string_to_unitrange(str::String)
     arr = parse.(Int, split(str, ":"))
     return first(arr):last(arr)
 end
+
+function ensure_directory_exists(path)
+    try
+        mkpath(path)
+    catch e
+    end
+end
