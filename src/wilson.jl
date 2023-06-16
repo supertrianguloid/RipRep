@@ -4,14 +4,14 @@ using LsqFit
 include("parser.jl")
 include("utilities.jl")
 
-function plot_w(wf, range = :all; _bang = false, title = "")
+function plot_w(wf, range = :all; binsize = 1, nboot = 1000, _bang = false, title = "")
     plot_func = _bang ? plot! : plot
     data = wf.analysis
     if range == :all
         range = data[1, :t][2:end-1]
     end
     index = _wf_time_to_index_w(wf, range[1]):_wf_time_to_index_w(wf, range[end])
-    plot_func(index.*wf.metadata[:dt], mean(data[:, :W])[index], yerr = _bootstrap(data[:, :W])[index], title=title, legend=false)
+    plot_func(index.*wf.metadata[:dt], mean(data[:, :W])[index], yerr = standard_error(data[:, :W], binsize=binsize, nboot=nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$W(t)\$")
 end
