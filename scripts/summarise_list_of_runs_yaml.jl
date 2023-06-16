@@ -25,6 +25,12 @@ for line in readlines(ARGS[1])
         corrs = [:g5_folded, :gk_folded, :id_folded]
 	thermalise!(ens, THERM)
         try
+            plot_plaquette(ens)
+            save_figure("plaquette.pdf")
+        catch e
+            @error "Failed!"
+        end
+        try
             @info "PCAC mass..."
             ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
             plot_pcac_mass(ens, BINSIZE)
