@@ -16,10 +16,14 @@ for line in readlines(ARGS[1])
     println("Processing " * line)
     ens = load_ensemble(line)
     ensembles[line] = ens.global_metadata
-    if ens.global_metadata[:nconfs] > 1100
+    contains_nans = ens.global_metadata[:nan_confs] != []
+    if ens.global_metadata[:nconfs] > 1100 && !contains_nans
 	thermalise!(ens, THERM)
 	ensembles[line][:PCAC] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
+    if contains_nans
+        touch(ensemble_path * "CONTAINS_NANS")
+    end
 end
 
