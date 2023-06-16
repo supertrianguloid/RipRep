@@ -72,8 +72,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
     nan_confs = find_nans(data)
     
     if !isempty(nan_confs)
-        @warn "NaNs found at the following configurations"
-        print(nan_confs)
+        @warn "The run contains NaNs"
     end
 
     global_metadata[:nan_confs] = nan_confs
