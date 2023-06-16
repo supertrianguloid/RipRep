@@ -69,6 +69,14 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
 
     global_metadata[:path] = path
 
+    nan_confs = find_nans(data)
+    
+    if !isempty(nan_confs)
+        @warn "NaNs found at the following configurations"
+        print(nan_confs)
+    end
+
+    global_metadata[:nan_confs] = nan_confs
 
     open(path) do f
         global_metadata[:sha256] = bytes2hex(sha2_256(f))
@@ -357,17 +365,14 @@ function run_health_checks(run_metadata)
     
 end
 
-function trajectory_health_checks(trajectory_data)
+function find_nans(trajectory_data)
 
     #Check for NaNs
     nan_confs = []
     for corrname in CORRELATORS
         union!(nan_confs, filter(row -> !ismissing(row[corrname]) && any(isnan.(row[corrname])), trajectory_data).confno)
     end
-    if !isempty(nan_confs)
-        @warn "NaNs found at the following configurations"
-        print(nan_confs)
-    end
+    return nan_confs
     
 end
 
@@ -420,8 +425,6 @@ function load_ensemble(path::String)
     trajectory_data = extract_trajectory_data(trajectories)
     @info "Post-processing correlators"
     trajectory_data = post_process_correlators(trajectory_data)
-    @info "Checking trajectory health..."
-    trajectory_health_checks(trajectory_data)
     @info "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
     @info "Extracting global metadata..."
