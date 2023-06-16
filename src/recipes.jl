@@ -52,9 +52,3 @@ function process_yaml_ensemble(path::String)
     return overall_results
 end
 
-function ensure_directory_exists(path)
-    try
-        mkpath(path)
-    catch e
-    end
-end
