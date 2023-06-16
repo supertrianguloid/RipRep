@@ -19,12 +19,30 @@ for line in readlines(ARGS[1])
     contains_nans = ens.global_metadata[:nan_confs] != []
     if ens.global_metadata[:nconfs] > 1100 && !contains_nans
 	thermalise!(ens, THERM)
-	ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
-	ensembles[line][:fps] = bootstrap_effective_fps(ens.analysis, ens.global_metadata[:geometry][0], ens.global_metadata[:geometry][1], BINSIZE)
-	ensembles[line][:gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
-	ensembles[line][:g5] = bootstrap_effective_mass(ens.analysis, :g5_folded, BINSIZE)
-	ensembles[line][:gk] = bootstrap_effective_mass(ens.analysis, :gk_folded, BINSIZE)
-	ensembles[line][:id] = bootstrap_effective_mass(ens.analysis, :id_folded, BINSIZE)
+        try
+            ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
+        catch e
+        end
+        try
+            ensembles[line][:fps] = bootstrap_effective_fps(ens.analysis, ens.global_metadata[:geometry][0], ens.global_metadata[:geometry][1], BINSIZE)
+        catch e
+        end
+        try
+            ensembles[line][:gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
+        catch e
+        end
+        try
+            ensembles[line][:g5] = bootstrap_effective_mass(ens.analysis, :g5_folded, BINSIZE)
+        catch e
+        end
+        try
+            ensembles[line][:gk] = bootstrap_effective_mass(ens.analysis, :gk_folded, BINSIZE)
+        catch e
+        end
+        try
+            ensembles[line][:id] = bootstrap_effective_mass(ens.analysis, :id_folded, BINSIZE)
+        catch e
+        end
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
     if contains_nans
