@@ -77,15 +77,15 @@ function _find_t0(wf, data, window, dt; nboot = 100, ref = 1.0)
     return t
 end
 
-function _find_w0(wf, data, window, dt; nboot = 100, ref = 1.0)
+function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0)
     n1 = _wf_time_to_index_w(wf, window[1])
     n2 = _wf_time_to_index_w(wf, window[2])
     m = []
     c = []
     for i in 1:nboot
-        s = rand(1:nrow(data), nrow(data))
-        σ² = var(data[s, :W])
-        mu = mean(data[s, :W])
+        sample = get_subsample(wf.analysis, binsize)
+        σ² = var(sample[:, :W])
+        mu = mean(sample[:, :W])
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
         push!(m, fit.param[1])
@@ -95,12 +95,12 @@ function _find_w0(wf, data, window, dt; nboot = 100, ref = 1.0)
     return sqrt(w[1]), w[2]/(2*sqrt(w[1]))
 end
 
-function find_w0(wf, window; nboot = 100, ref = 1.0)
-    return _find_w0(wf, wf.analysis, window, wf.metadata.dt, nboot = nboot, ref = ref)
+function find_w0(wf, window; binsize = 1, nboot = 100, ref = 1.0)
+    return _find_w0(wf, window, wf.metadata[:dt], nboot = nboot, ref = ref)
 end
 
 function find_t0(wf, window; nboot = 100, ref = 1.0)
-    return _find_t0(wf, wf.analysis, window, wf.metadata.dt, nboot = nboot, ref = ref)
+    return _find_t0(wf, wf.analysis, window, wf.metadata[:dt], nboot = nboot, ref = ref)
 end
 
 function error_on_error_w0(wf, window; nboot = 100, ref = 1.0)

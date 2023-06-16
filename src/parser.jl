@@ -362,6 +362,8 @@ function run_health_checks(run_metadata)
         @error "The geometry changed!"
         @show (unique(select(run_metadata, :geometry)))
     end
+
+
     
 end
 
