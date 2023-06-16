@@ -315,6 +315,19 @@ function extract_wf_trajectory_data(trajectories)
     return traj_data
 end
 
+function wilson_flow_same_tmax(trajectory_data::DataFrame)
+    tmax = min(length.(trajectory_data.t)...)
+    wmax = min(length.(trajectory_data.W)...)
+    wf_meas = [:t, :E, :t2E, :Esym, :t2Esym, :TC]
+    for i in 1:nrow(trajectory_data)
+        for meas in wf_meas
+            trajectory_data[i, meas] = trajectory_data[i, meas][1:tmax]
+        end
+        trajectory_data[i, :W] = trajectory_data[i, :W][1:wmax]
+    end
+    return trajectory_data
+end
+
 function _extractor_only_one_matching_line(regex, name, df; vital=false, multiple_but_unique_okay=false)
     matching_line = filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
     if(multiple_but_unique_okay)
@@ -388,6 +401,7 @@ function post_process_correlators(trajectory_data)
     return trajectory_data
 end
 
+
 function load_ensemble(path::String)
     @info "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
@@ -427,6 +441,7 @@ function load_wilsonflow(path::String)
     trajectories = split_wf_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
     trajectory_data = extract_wf_trajectory_data(trajectories)
+    trajectory_data = wilson_flow_same_tmax(trajectory_data)
     return WilsonFlow(extract_wf_metadata(runs[1]), trajectory_data, trajectory_data)
 end
     
