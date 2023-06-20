@@ -13,6 +13,9 @@ BINSIZE = 10
 
 ensembles = Dict()
 
+rm(OUTPUT_DIRECTORY, force = true, recursive = true)
+ensure_directory_exists(OUTPUT_DIRECTORY)
+
 for line in readlines(ARGS[1])
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     ensure_directory_exists(ensemble_path)
@@ -25,6 +28,7 @@ for line in readlines(ARGS[1])
         corrs = [:g5_folded, :gk_folded, :id_folded]
 	thermalise!(ens, THERM)
         try
+            @info "Plotting plaquette..."
             plot_plaquette(ens)
             save_figure("plaquette.pdf")
         catch e
@@ -71,3 +75,5 @@ for line in readlines(ARGS[1])
     end
 end
 
+
+YAML.write_file(OUTPUT_DIRECTORY * "ensembles.yml", ensembles)
