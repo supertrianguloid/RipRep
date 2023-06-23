@@ -28,8 +28,8 @@ for line in keys(list_of_ensembles)
     wf = nothing
     try
         wf = list_of_ensembles[line]["wf"]
-        @info "Loading Wilson flow data"
-        wf = load_wf(wf)
+        wf = load_wilsonflow(wf)
+        @info "Successfully loaded Wilson flow data"
     catch e
     end
 
