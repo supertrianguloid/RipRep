@@ -90,6 +90,27 @@ for line in keys(list_of_ensembles)
             catch e
                 @error "Failed!"
             end
+            try
+                @info "W..."
+                plot_w(wf, binsize = BINSIZE)
+                save_figure("W.pdf")
+            catch e
+                @error "Failed!"
+            end
+            try
+                @info "Topological Charge..."
+                plot_tc(wf)
+                save_figure("tc.pdf")
+            catch e
+                @error "Failed!"
+            end
+            try
+                @info "Topological Charge Histogram..."
+                plot_tc_hist(wf)
+                save_figure("tc_hist.pdf")
+            catch e
+                @error "Failed!"
+            end
         end
         
     end
