@@ -1,3 +1,4 @@
+using Base: nothing_sentinel
 using Plots
 using LsqFit
 
@@ -152,5 +153,16 @@ function reference_time(yref, c, cvar, m, mvar, cov = 0)
     )
 end
 
-#function find_w0(wf, window, ref = 1.0)
-#end
+function auto_w0(wf; binsize = 1, eitherside = 2, nboot = 100, ref = 1)
+    rightpoint = findfirst(>(ref), mean(wf.analysis.W))
+    window = 0
+    try
+        fitrange = (rightpoint-eitherside):((rightpoint - 1) + eitherside)
+        a = mean(wf.analysis.W)[fitrange]
+        window = wf.analysis.t[1][fitrange]
+    catch e
+        @error "W(t) never reaches the reference value." ref
+        return nothing
+    end
+    return find_w0(wf, window, binsize = binsize, nboot = nboot, ref = ref)
+end

@@ -1,7 +1,9 @@
+using Base: nothing_sentinel
 #!julia
 using YAML
 include(Base.source_dir()*"/../src/parser.jl")
 include(Base.source_dir()*"/../src/spectroscopy.jl")
+include(Base.source_dir()*"/../src/wilson.jl")
 include(Base.source_dir()*"/../src/utilities.jl")
 
 #Turn off plot display because we are headless
@@ -11,15 +13,27 @@ OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/"
 THERM = 1000
 BINSIZE = 10
 
+WF_REF = 1.0
+
 ensembles = Dict()
 
 rm(OUTPUT_DIRECTORY, force = true, recursive = true)
 ensure_directory_exists(OUTPUT_DIRECTORY)
 
-for line in readlines(ARGS[1])
+list_of_ensembles = YAML.load_file(ARGS[1])
+
+for line in keys(list_of_ensembles)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     ensure_directory_exists(ensemble_path)
     println("Processing " * line)
+    wf = nothing
+    try
+        wf = list_of_ensembles[line]["wf"]
+        @info "Loading Wilson flow data"
+        wf = load_wf(wf)
+    catch e
+    end
+
     save_figure(name) = savefig(ensemble_path * name)
     ens = load_ensemble(line)
     ensembles[line] = ens.global_metadata
@@ -68,6 +82,17 @@ for line in readlines(ARGS[1])
                 @error "Failed!"
             end
         end
+        if wf != nothing
+            @info "Wilson flow..."
+            try
+                @info "t²E..."
+                plot_t2e(wf, binsize = BINSIZE)
+                save_figure("t2e.pdf")
+            catch e
+                @error "Failed!"
+            end
+        end
+        
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
     if contains_nans

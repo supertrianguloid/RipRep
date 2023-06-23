@@ -51,6 +51,15 @@ function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsam
     return mean(pcac), std(pcac)
 end
 
+function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod = :randomsample, nboot = 100)
+    pcac = []
+    for i in 1:nboot
+        data = get_subsample(df, binsize, method=binmethod)
+        push!(pcac, effective_pcac(data))
+    end
+    return pcac
+end
+
 function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
     fit = []
     for i in 1:nboot
