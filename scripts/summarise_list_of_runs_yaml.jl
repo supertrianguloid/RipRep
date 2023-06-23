@@ -111,6 +111,13 @@ for line in keys(list_of_ensembles)
             catch e
                 @error "Failed!"
             end
+            try
+                @info "Calculating w0..."
+                w0 = auto_w0(wf)
+                ensembles[line][:w0] = w0
+            catch e
+                @error "Failed!"
+            end
         end
         
     end
