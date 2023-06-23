@@ -1,4 +1,3 @@
-using Base: nothing_sentinel
 #!julia
 using YAML
 include(Base.source_dir()*"/../src/parser.jl")
