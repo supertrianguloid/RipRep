@@ -81,6 +81,11 @@ function effective_mass(correlator, T)
     return meffs               
 end
 
+function effective_mass_ratio(corr_numerator, corr_denominator, T)
+    return effective_mass(corr_numerator, T)./effective_mass(corr_denominator, T)
+end
+
+
 function effective_gps(correlator, T, L)
     timeslices = eachindex(correlator)[1:end]
     meff = effective_mass(correlator, T)
@@ -162,6 +167,28 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     return μ, σ
 end
 
+function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_denominator, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
+    meff_boot = []
+    
+    T = length(df[1, :g5])
+    
+    for i in 1:nboot
+        subsample = get_subsample(df, binsize, method=binmethod)
+        numerator = mean(subsample[:, corr_numerator])
+        denominator = mean(subsample[:, corr_denominator])
+        if range != :all
+            numerator = numerator[range]
+            denominator = denominator[range]
+        end
+        
+        effective_masses = effective_mass_ratio(numerator, denominator, T)
+        push!(meff_boot, effective_masses)
+    end
+    μ = mean(meff_boot)
+    σ = std(meff_boot)
+    return μ, σ
+end
+
 function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = 1000)
     fit = []
     for i in 1:nboot
@@ -185,6 +212,18 @@ function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmetho
 end
 function plot_effective_mass!(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
+end
+
+function plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+    μ, σ = bootstrap_effective_mass_ratio(ens.analysis, numerator, denominator, binsize, binmethod=binmethod, nboot=nboot)
+    if plotting_range == :all
+        plotting_range = eachindex(μ)
+    end
+    plot_func = _bang ? plot! : plot
+    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+end
+function plot_effective_mass_ratio!(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+    plot_effective_mass(ens, numerator, denominator, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
 function plot_pcac_mass(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
