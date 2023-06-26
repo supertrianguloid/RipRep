@@ -293,7 +293,7 @@ function extract_trajectory_data(trajectories)
     return traj_data
 end
 
-function extract_wf_trajectory_data(trajectories)
+function extract_wf_trajectory_data(trajectories, metadata)
     obs = [:t, :E, :t2E, :Esym, :t2Esym, :TC, :W]
     traj_data = DataFrame([Int[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, obs...])
 
@@ -314,7 +314,7 @@ function extract_wf_trajectory_data(trajectories)
         data[:Esym] = meas[:, 4]
         data[:t2Esym] = meas[:, 5]
         data[:TC] = meas[:, 6]
-        data[:W] = parent(d(data[:t2E])) .* data[:t][2 : end - 1]
+        data[:W] = parent(d(data[:t2E], h = metadata[:dt])) .* data[:t][2 : end - 1]
 
         push!(traj_data, [data[:confno], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC], data[:W]])
     end
@@ -441,11 +441,13 @@ function load_wilsonflow(path::String)
     @info "Extracting runs..."
     output_df = add_run_number_to_output_df(output_df)
     runs = split_output_dataframe_into_runs(output_df, keep_runs_without_trajectories=true)
+    @info "Extracting metadata..."
+    metadata = extract_wf_metadata(runs[1])
     @info "Extracting trajectories..."
     trajectories = split_wf_dataframe_into_trajectories(runs)
     @info "Extracting trajectory data..."
-    trajectory_data = extract_wf_trajectory_data(trajectories)
+    trajectory_data = extract_wf_trajectory_data(trajectories, metadata)
     trajectory_data = wilson_flow_same_tmax(trajectory_data)
-    return WilsonFlow(extract_wf_metadata(runs[1]), trajectory_data, trajectory_data)
+    return WilsonFlow(metadata, trajectory_data, trajectory_data)
 end
     
