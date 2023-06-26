@@ -9,6 +9,7 @@ TRAJ_BEGIN_REGEX = r"Trajectory #(.*)\.\.\.$"
 TRAJ_GENERATED_REGEX = r"Trajectory #(.*): generated in \[(.*) sec (.*) usec\]$"
 ACCEPT_REJECT_REGEX = r"^Configuration (rejected|accepted).$"
 DS_REGEX = r"^\[DeltaS = (.*)\]\[exp\(-DS\) = (.*)\]$"
+MEAS_REGEX = r"^conf #(.*) mass=(.*) DEFAULT_SEMWALL TRIPLET (.*)= (.*) $"
 WF_TRAJ_BEGIN_REGEX = r"^Configuration from (.*)$"
 WF_TRAJ_BEGIN_REGEX_RUN_NUMBER = r"^Configuration from .*n([0-9]+)$"
 WF_MEASUREMENT_REGEX = r"^WF \(t,E,t2\*E,Esym,t2\*Esym,TC\) = (.*)$"
@@ -354,6 +355,11 @@ function _extractor_only_one_matching_line(regex, name, df; vital=false, multipl
     return nothing
 end
 
+function _extractor_all_matching_lines(regex, name, df)
+    return filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
+end
+    
+
 function run_health_checks(run_metadata)
 
     #Check the geometry doesn't change
@@ -407,6 +413,34 @@ function post_process_correlators(trajectory_data)
     return trajectory_data
 end
 
+function extract_measurements_only(df::DataFrame)
+    masses = []
+    meas_lines = _extractor_all_matching_lines(MEAS_REGEX, "MAIN", df)
+    nconfs = parse(Int64, match(MEAS_REGEX, last(meas_lines)).captures[1])
+    measurements = [Dict() for i in 1:nconfs]
+    for line in meas_lines
+        conf, m, corr, data = match(MEAS_REGEX, line).captures
+        push!(masses, parse(Float64, m))
+        data = parse.(Float64, split(data))
+        measurements[parse(Int64, conf)][Symbol(corr)] = OffsetArray(data, 0:(length(data)-1))
+    end
+
+    mass = only(Set(masses))
+
+    traj_data = DataFrame([Int[], fill(Union{OffsetArray{Float64}, Missing}[], length(CORRELATORS))...], [:confno, CORRELATORS...])
+
+    for i in 1:nconfs
+        push!(traj_data, [i; getindex.(Ref(measurements[i]), [CORRELATORS...])])
+    end
+
+    metadata = Dict()
+    metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", df, vital=true)), "x")), 0:3)
+    metadata[:m0] = mass
+
+    traj_data = post_process_correlators(traj_data)
+    
+    return Ensemble(metadata, DataFrame([metadata]), traj_data, traj_data)
+end
 
 function load_ensemble(path::String)
     @info "Loading the output file..."
