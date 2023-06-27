@@ -48,7 +48,7 @@ function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsam
         data = get_subsample(df, binsize, method=binmethod)
         push!(pcac, effective_pcac(data))
     end
-    return mean(pcac), std(pcac)
+    return [mean(pcac), std(pcac)]
 end
 
 function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod = :randomsample, nboot = 100)
@@ -69,7 +69,7 @@ function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, n
     end
     μ = mean(fit)
     σ = std(fit)
-    return μ, σ
+    return [μ, σ]
 end
 
 function effective_mass(correlator, T)
@@ -101,7 +101,7 @@ function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randoms
         c = mean(subsample[:, :g5_folded])
         push!(gps, effective_gps(c, T, L))
     end
-    return mean(gps), std(gps)
+    return [mean(gps), std(gps)]
 end
 
 function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
@@ -114,7 +114,7 @@ function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     end
     μ = mean(fit)
     σ = std(fit)
-    return μ, σ
+    return [μ, σ]
 end
 
 function effective_fps(df::DataFrame, T, L)
@@ -130,7 +130,7 @@ function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :rand
         subsample = get_subsample(df, binsize, method=binmethod)
         push!(fps, effective_fps(subsample, T, L))
     end
-    return mean(fps), std(fps)
+    return [mean(fps), std(fps)]
 end
 
 function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
@@ -144,7 +144,7 @@ function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     end
     μ = mean(fit)
     σ = std(fit)
-    return μ, σ
+    return [μ, σ]
 end
 
 function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
@@ -164,7 +164,7 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     end
     μ = mean(meff_boot)
     σ = std(meff_boot)
-    return μ, σ
+    return [μ, σ]
 end
 
 function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_denominator, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
@@ -186,7 +186,7 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
     end
     μ = mean(meff_boot)
     σ = std(meff_boot)
-    return μ, σ
+    return [μ, σ]
 end
 
 function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = 1000)
@@ -199,7 +199,7 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
     end
     μ = mean(fit)
     σ = std(fit)
-    return μ, σ
+    return [μ, σ]
 end
 
 function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)

@@ -93,7 +93,7 @@ function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0)
         push!(c, fit.param[2])
     end
     w = reference_time(ref, mean(c), var(c), mean(m), var(m), cov(m, c))
-    return sqrt(w[1]), w[2]/(2*sqrt(w[1]))
+    return [sqrt(w[1]), w[2]/(2*sqrt(w[1]))]
 end
 
 function find_w0(wf, window; binsize = 1, nboot = 100, ref = 1.0)
