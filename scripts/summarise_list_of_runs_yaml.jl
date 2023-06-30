@@ -30,13 +30,6 @@ ensure_directory_exists(OUTPUT_DIRECTORY)
 
 list_of_ensembles = YAML.load_file(ARGS[1])
 
-for line in keys(list_of_ensembles)
-    process_ensemble(line, list_of_ensembles[line])
-end
-
-
-YAML.write_file(OUTPUT_DIRECTORY * "ensembles.yml", ensembles)
-
 function process_ensemble(line, ensemble_data)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     with_logger(MinLevelLogger(ensemble_path * "analysis.log", Logging.Info)) do
@@ -179,3 +172,10 @@ function process_ensemble(line, ensemble_data)
     end
     
 end
+
+for line in keys(list_of_ensembles)
+    process_ensemble(line, list_of_ensembles[line])
+end
+
+
+YAML.write_file(OUTPUT_DIRECTORY * "ensembles.yml", ensembles)
