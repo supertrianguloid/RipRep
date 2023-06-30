@@ -182,7 +182,7 @@ end
 for line in [k for k in keys(list_of_ensembles)]
     @info "Processing " * line
     analysis = process_ensemble(line, list_of_ensembles[line])
-    ensemble[line] = analysis
+    ensembles[line] = analysis
 end
 
 
