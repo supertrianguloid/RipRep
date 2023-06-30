@@ -44,7 +44,7 @@ function process_ensemble(line, ensemble_data)
 
         save_figure(name) = savefig(ensemble_path * name)
         ens = load_ensemble(line)
-        ensembles[line] = ens.global_metadata
+        analysis = deepcopy(ens.global_metadata)
         contains_nans = ens.global_metadata[:nan_confs] != []
         if ens.global_metadata[:nconfs] > 1100 && !contains_nans
             corrs = [:g5_folded, :gk_folded, :id_folded]
@@ -62,10 +62,10 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "PCAC mass..."
-                ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
+                analysis[:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
                 plot_pcac_mass(ens, BINSIZE)
                 save_figure("pcac_mass.pdf")
-                ensembles[line][:m_pcac] = fit_pcac_mass(ens, BINSIZE, fit_window)
+                analysis[:m_pcac] = fit_pcac_mass(ens, BINSIZE, fit_window)
                 plot_pcac_fit(ens, BINSIZE, fit_window, 1:T_middle)
                 save_figure("pcac_mass_fit.pdf")
             catch e
@@ -73,10 +73,10 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Fps..."
-                ensembles[line][:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, BINSIZE)
+                analysis[:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, BINSIZE)
                 plot_fps(ens, BINSIZE)
                 save_figure("fps.pdf")
-                ensembles[line][:fps] = fit_fps(ens, BINSIZE, fit_window)
+                analysis[:fps] = fit_fps(ens, BINSIZE, fit_window)
                 plot_fps_fit(ens, BINSIZE, fit_window, 1:T_middle)
                 save_figure("fps_fit.pdf")
             catch e
@@ -84,10 +84,10 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Gps..."
-                ensembles[line][:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
+                analysis[:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
                 plot_gps(ens, BINSIZE)
                 save_figure("gps.pdf")
-                ensembles[line][:gps] = fit_gps(ens, BINSIZE, fit_window)
+                analysis[:gps] = fit_gps(ens, BINSIZE, fit_window)
                 plot_gps_fit(ens, BINSIZE, fit_window, 1:T_middle)
                 save_figure("gps_fit.pdf")
             catch e
@@ -96,10 +96,10 @@ function process_ensemble(line, ensemble_data)
             for corr in corrs
                 try
                     @info String(corr) * "..."
-                    ensembles[line][Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
+                    analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
                     plot_effective_mass(ens, corr, BINSIZE)
                     save_figure("effective_mass_" * String(corr) * ".pdf")
-                    ensembles[line][corr] = fit_effective_mass(ens, corr, BINSIZE, fit_window)
+                    analysis[corr] = fit_effective_mass(ens, corr, BINSIZE, fit_window)
                     plot_effective_mass_fit(ens, corr, BINSIZE, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
                 catch e
@@ -139,33 +139,33 @@ function process_ensemble(line, ensemble_data)
                 try
                     @info "Calculating w0..."
                     w0 = auto_w0(wf)
-                    ensembles[line][:w0] = w0
+                    analysis[:w0] = w0
                 catch e
                     @error "Failed!"
                 end
                 try
                     @info "Calculating mpiw0..."
-                    ensembles[line][:mpiw0] = propagate_product(ensembles[line][:w0], ensembles[line][:g5_folded])
+                    analysis[:mpiw0] = propagate_product(analysis[:w0], analysis[:g5_folded])
                 catch e
                     @error "Failed!"
                 end
             end
             try
                 @info "Calculating mpi^2..."
-                ensembles[line][:mpi2] = propagate_product(ensembles[line][:g5_folded], ensembles[line][:g5_folded])
+                analysis[:mpi2] = propagate_product(analysis[:g5_folded], analysis[:g5_folded])
             catch e
                 @error "Failed!"
             end
             try
                 @info "Calculating mpiL..."
-                ensembles[line][:mpiL] = ensembles[line][:g5_folded][1]*L
+                analysis[:mpiL] = analysis[:g5_folded][1]*L
             catch e
                 @error "Failed!"
             end
         end
         
     end
-    YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
+    YAML.write_file(ensemble_path * "analysis.yml", analysis)
     if contains_nans
         touch(ensemble_path * "CONTAINS_NANS")
     end
@@ -174,7 +174,8 @@ end
 
 Threads.@threads for line in [k for k in keys(list_of_ensembles)]
     @info "Processing " * line
-    process_ensemble(line, list_of_ensembles[line])
+    analysis = process_ensemble(line, list_of_ensembles[line])
+    ensemble[line] = analysis
 end
 
 
