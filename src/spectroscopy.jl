@@ -8,6 +8,7 @@ include("parser.jl")
 include("utilities.jl")
 
 TITLE_FONT_SIZE = 13
+NBOOT_DEFAULT = 50
 
 function plot_plaquette(ens; range = :default, _bang = false)
     if range == :default
@@ -22,7 +23,7 @@ function plot_plaquette!(ens; range = :default)
     plot_plaquette(ens, range=range, _bang=true)
 end
 
-function plot_correlator(ens, corr, range = :default; binsize = 1, nboot=1000, log::Bool=true, _bang = false)
+function plot_correlator(ens, corr, range = :default; binsize = 1, nboot=NBOOT_DEFAULT, log::Bool=true, _bang = false)
     if range == :default
         range = eachindex(ens.analysis[1, corr])
     end
@@ -42,7 +43,7 @@ function effective_pcac(df::DataFrame)
     return  0.5 .* meff[1:end]./sinh.(meff[1:end]) .* mean(df[:, :dg5_g0g5_re_folded])./(mean(df[:, :g5_folded])[1:end])
 end
 
-function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsample, nboot = 100)
+function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     pcac = []
     for i in 1:nboot
         data = get_subsample(df, binsize, method=binmethod)
@@ -51,7 +52,7 @@ function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsam
     return [mean(pcac), std(pcac)]
 end
 
-function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod = :randomsample, nboot = 100)
+function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     pcac = []
     for i in 1:nboot
         data = get_subsample(df, binsize, method=binmethod)
@@ -60,7 +61,7 @@ function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod
     return pcac
 end
 
-function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
+function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     fit = []
     for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
@@ -92,7 +93,7 @@ function effective_gps(correlator, T, L)
     return [sqrt(meff[t]*correlator[t]/h(T, t, 0, meff[t])*L^3) for t in timeslices]
 end
 
-function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randomsample, nboot = 1000)
+function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     gps = []
     T = length(df[1, :g5])
     
@@ -104,7 +105,7 @@ function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randoms
     return [mean(gps), std(gps)]
 end
 
-function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
+function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
     fit = []
     for i in 1:nboot
@@ -124,7 +125,7 @@ function effective_fps(df::DataFrame, T, L)
     return 2 .* (pcac./(meff.^2)).*gps
 end
 
-function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :randomsample, nboot = 1000)
+function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     fps = []
     for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
@@ -133,7 +134,7 @@ function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :rand
     return [mean(fps), std(fps)]
 end
 
-function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = 100)
+function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
     fit = []
@@ -147,7 +148,7 @@ function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     return [μ, σ]
 end
 
-function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
+function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
     meff_boot = []
     
     T = length(df[1, :g5])
@@ -167,7 +168,7 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     return [μ, σ]
 end
 
-function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_denominator, binsize; binmethod = :randomsample, nboot = 1000, range=:all)
+function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_denominator, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
     meff_boot = []
     
     T = length(df[1, :g5])
@@ -189,7 +190,7 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
     return [μ, σ]
 end
 
-function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = 1000)
+function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     fit = []
     for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
@@ -202,7 +203,7 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
     return [μ, σ]
 end
 
-function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
     μ, σ = bootstrap_effective_mass(ens.analysis, corr, binsize, binmethod=binmethod, nboot=nboot)
     if plotting_range == :all
         plotting_range = eachindex(μ)
@@ -210,11 +211,11 @@ function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmetho
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_effective_mass!(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_effective_mass!(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
     μ, σ = bootstrap_effective_mass_ratio(ens.analysis, numerator, denominator, binsize, binmethod=binmethod, nboot=nboot)
     if plotting_range == :all
         plotting_range = eachindex(μ)
@@ -222,11 +223,11 @@ function plot_effective_mass_ratio(ens, numerator, denominator, binsize, plottin
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_effective_mass_ratio!(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_effective_mass_ratio!(ens, numerator, denominator, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_effective_mass(ens, numerator, denominator, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_pcac_mass(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_pcac_mass(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
     μ, σ = bootstrap_effective_pcac(ens.analysis, binsize, binmethod=binmethod, nboot=nboot)
     if plotting_range == :all
         plotting_range = eachindex(μ)
@@ -234,11 +235,11 @@ function plot_pcac_mass(ens, binsize, plotting_range = :all; binmethod = :random
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_pcac_mass!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_pcac_mass!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_fps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_fps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
     μ, σ = bootstrap_effective_fps(ens.analysis, T, L, binsize, binmethod=binmethod, nboot=nboot)
@@ -248,11 +249,11 @@ function plot_fps(ens, binsize, plotting_range = :all; binmethod = :randomsample
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_fps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_fps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
-function plot_gps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = false)
+function plot_gps(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
     μ, σ = bootstrap_effective_gps(ens.analysis, L, binsize, binmethod=binmethod, nboot=nboot)
@@ -262,33 +263,33 @@ function plot_gps(ens, binsize, plotting_range = :all; binmethod = :randomsample
     plot_func = _bang ? plot! : plot
     plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
 end
-function plot_gps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = 50, _bang = true)
+function plot_gps!(ens, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
 
-function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_effective_mass(ens, corr, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
     @show μ, σ
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
     
-function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_pcac_mass(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
     @show μ, σ
     plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
 
-function plot_gps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+function plot_gps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_gps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
     @show μ, σ
     plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
 
-function plot_fps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = 50)
+function plot_fps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_fps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
     @show μ, σ
     plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
