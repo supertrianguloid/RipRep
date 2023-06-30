@@ -2,7 +2,6 @@
 using YAML
 using Dates
 using LoggingExtras
-using ThreadSafeDicts
 
 global_logger(MinLevelLogger(FileLogger(ARGS[2]), Logging.Info))
 
@@ -23,7 +22,7 @@ NO_FIT_POINTS = 4
 
 WF_REF = 1.0
 
-ensembles = ThreadSafeDict()
+ensembles = Dict()
 
 ensure_directory_exists(OUTPUT_DIRECTORY)
 
