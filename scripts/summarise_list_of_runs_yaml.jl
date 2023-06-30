@@ -2,6 +2,7 @@
 using YAML
 using Dates
 using LoggingExtras
+using ThreadSafeDicts
 
 global_logger(MinLevelLogger(FileLogger(ARGS[2]), Logging.Info))
 
@@ -22,7 +23,7 @@ NO_FIT_POINTS = 4
 
 WF_REF = 1.0
 
-ensembles = Dict()
+ensembles = ThreadSafeDict()
 
 ensure_directory_exists(OUTPUT_DIRECTORY)
 
@@ -179,7 +180,7 @@ function process_ensemble(line, ensemble_data)
     
 end
 
-for line in [k for k in keys(list_of_ensembles)]
+Threads.@threads for line in [k for k in keys(list_of_ensembles)]
     @info "Processing " * line
     analysis = process_ensemble(line, list_of_ensembles[line])
     ensembles[line] = analysis
