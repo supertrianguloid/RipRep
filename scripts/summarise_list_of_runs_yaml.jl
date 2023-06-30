@@ -106,7 +106,7 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "mv/mpi..."
-                analysis[:effective_ratio_mv_mpi] = bootstrap_effective_mass_ratio(ens.analysis, :gk_folded, :g5_folded, BINSIZE)
+                analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(ens.analysis, :gk_folded, :g5_folded, BINSIZE)
                 plot_effective_mass_ratio(ens, :gk_folded, :g5_folded, BINSIZE)
                 save_figure("effective_ratio_mv_mpi.pdf")
                 analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
