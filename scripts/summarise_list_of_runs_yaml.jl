@@ -174,7 +174,7 @@ end
 
 for line in keys(list_of_ensembles)
     @info "Processing " * line
-    Threads.@spawn process_ensemble(line, list_of_ensembles[line])
+    @async process_ensemble(line, list_of_ensembles[line])
 end
 
 
