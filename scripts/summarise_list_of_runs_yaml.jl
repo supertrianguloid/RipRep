@@ -148,6 +148,12 @@ for line in keys(list_of_ensembles)
         catch e
             @error "Failed!"
         end
+        try
+            @info "Calculating mpiL..."
+            ensembles[line][:mpiL] = ensembles[line][:g5_folded][1]*L
+        catch e
+            @error "Failed!"
+        end
         
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
