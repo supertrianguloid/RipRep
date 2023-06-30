@@ -5,20 +5,26 @@ using LsqFit
 include("parser.jl")
 include("utilities.jl")
 
-function plot_w(wf, range = :all; binsize = 1, nboot = 1000, _bang = false, title = "")
+function plot_w(wf, range = :all; binsize = 1, nboot = 1000, _bang = false, title = "", sym = true)
     plot_func = _bang ? plot! : plot
     data = wf.analysis
     if range == :all
         range = data[1, :t][2:end-1]
     end
+    if(sym)
+        data = data[:, :Wsym]
+    else
+        data = data[:, :W]
+    end
+
     index = _wf_time_to_index_w(wf, range[1]):_wf_time_to_index_w(wf, range[end])
-    plot_func(index.*wf.metadata[:dt], mean(data[:, :W])[index], yerr = standard_error(data[:, :W], binsize=binsize, nboot=nboot)[index], title=title, legend=false)
+    plot_func(index.*wf.metadata[:dt], mean(data)[index], yerr = standard_error(data, binsize=binsize, nboot=nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$W(t)\$")
 end
 
-function plot_w!(wf, range = :all)
-    plot_w(wf, range, _bang = true)
+function plot_w!(wf, range = :all, sym = true)
+    plot_w(wf, range, _bang = true, sym = sym)
 end
 
 function plot_tc(wf; title="")
@@ -78,26 +84,57 @@ function _find_t0(wf, data, window, dt; nboot = 100, ref = 1.0)
     return t
 end
 
-function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0)
+function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
     n1 = _wf_time_to_index_w(wf, window[1])
     n2 = _wf_time_to_index_w(wf, window[2])
     m = []
     c = []
     for i in 1:nboot
         sample = get_subsample(wf.analysis, binsize)
-        σ² = var(sample[:, :W])
-        mu = mean(sample[:, :W])
+        if(sym)
+            σ² = var(sample[:, :Wsym])
+            mu = mean(sample[:, :Wsym])
+        else
+            σ² = var(sample[:, :W])
+            mu = mean(sample[:, :W])
+        end
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
         push!(m, fit.param[1])
         push!(c, fit.param[2])
+
     end
     w = reference_time(ref, mean(c), var(c), mean(m), var(m), cov(m, c))
     return [sqrt(w[1]), w[2]/(2*sqrt(w[1]))]
 end
 
-function find_w0(wf, window; binsize = 1, nboot = 100, ref = 1.0)
-    return _find_w0(wf, window, wf.metadata[:dt], nboot = nboot, ref = ref)
+function _find_w0_fullbootstrap(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
+    n1 = _wf_time_to_index_w(wf, window[1])
+    n2 = _wf_time_to_index_w(wf, window[2])
+    w = []
+    for i in 1:nboot
+        sample = get_subsample(wf.analysis, binsize)
+        if(sym)
+            σ² = var(sample[:, :Wsym])
+            mu = mean(sample[:, :Wsym])
+        else
+            σ² = var(sample[:, :W])
+            mu = mean(sample[:, :W])
+        end
+        @. model(x, params) = params[1]*x + params[2]
+        fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
+        m, c = fit.param
+        push!(w, sqrt((ref - c)/m))
+    end
+    return [mean(w), std(w)]
+end
+
+function find_w0(wf, window; binsize = 1, nboot = 100, ref = 1.0, sym = true, fullbootstrap = true)
+    if(fullbootstrap)
+        return _find_w0_fullbootstrap(wf, window, wf.metadata[:dt], binsize = binsize, nboot = nboot, ref = ref, sym = sym)
+    else
+        return _find_w0(wf, window, wf.metadata[:dt], binsize = binsize, nboot = nboot, ref = ref, sym = sym)
+    end
 end
 
 function find_t0(wf, window; nboot = 100, ref = 1.0)
@@ -153,16 +190,21 @@ function reference_time(yref, c, cvar, m, mvar, cov = 0)
     )
 end
 
-function auto_w0(wf; binsize = 1, eitherside = 2, nboot = 100, ref = 1)
-    rightpoint = findfirst(>(ref), mean(wf.analysis.W))
+function auto_w0(wf; binsize = 1, eitherside = 2, nboot = 100, ref = 1, sym=true, fullbootstrap=true)
+    if(sym)
+        data = wf.analysis.Wsym
+    else
+        data = wf.analysis.W
+    end
+    rightpoint = findfirst(>(ref), mean(data))
     window = 0
     try
         fitrange = (rightpoint-eitherside):((rightpoint - 1) + eitherside)
-        a = mean(wf.analysis.W)[fitrange]
+        a = mean(data)[fitrange]
         window = wf.analysis.t[1][fitrange]
     catch e
-        @error "W(t) never reaches the reference value." ref
+        @error "W never reaches the reference value." ref
         return nothing
     end
-    return find_w0(wf, window, binsize = binsize, nboot = nboot, ref = ref)
+    return find_w0(wf, window, binsize = binsize, nboot = nboot, ref = ref, sym = sym, fullbootstrap = fullbootstrap)
 end

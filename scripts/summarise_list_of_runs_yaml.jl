@@ -11,6 +11,7 @@ ENV["GKSwstype"]="nul"
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/"
 THERM = 1000
 BINSIZE = 10
+NO_FIT_POINTS = 4
 
 WF_REF = 1.0
 
@@ -39,6 +40,10 @@ for line in keys(list_of_ensembles)
     contains_nans = ens.global_metadata[:nan_confs] != []
     if ens.global_metadata[:nconfs] > 1100 && !contains_nans
         corrs = [:g5_folded, :gk_folded, :id_folded]
+        T = ens.global_metadata[:geometry][0]
+        L = ens.global_metadata[:geometry][1]
+        T_middle = T ÷ 2
+        fit_window = (T_middle - NO_FIT_POINTS):T_middle
 	thermalise!(ens, THERM)
         try
             @info "Plotting plaquette..."
@@ -52,31 +57,43 @@ for line in keys(list_of_ensembles)
             ensembles[line][:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
             plot_pcac_mass(ens, BINSIZE)
             save_figure("pcac_mass.pdf")
+            ensembles[line][:m_pcac] = fit_pcac_mass(ens, BINSIZE, fit_window)
+            plot_pcac_fit(ens, BINSIZE, fit_window, 1:T_middle)
+            save_figure("pcac_mass_fit.pdf")
         catch e
             @error "Failed!"
         end
         try
             @info "Fps..."
-            ensembles[line][:fps] = bootstrap_effective_fps(ens.analysis, ens.global_metadata[:geometry][0], ens.global_metadata[:geometry][1], BINSIZE)
+            ensembles[line][:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, BINSIZE)
             plot_fps(ens, BINSIZE)
             save_figure("fps.pdf")
+            ensembles[line][:fps] = fit_fps(ens, BINSIZE, fit_window)
+            plot_fps_fit(ens, BINSIZE, fit_window, 1:T_middle)
+            save_figure("fps_fit.pdf")
         catch e
             @error "Failed!"
         end
         try
             @info "Gps..."
-            ensembles[line][:gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
+            ensembles[line][:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
             plot_gps(ens, BINSIZE)
             save_figure("gps.pdf")
+            ensembles[line][:gps] = fit_gps(ens, BINSIZE, fit_window)
+            plot_gps_fit(ens, BINSIZE, fit_window, 1:T_middle)
+            save_figure("gps_fit.pdf")
         catch e
             @error "Failed!"
         end
         for corr in corrs
             try
                 @info String(corr) * "..."
-                ensembles[line][corr] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
+                ensembles[line][Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
                 plot_effective_mass(ens, corr, BINSIZE)
                 save_figure("effective_mass_" * String(corr) * ".pdf")
+                ensembles[line][corr] = fit_effective_mass(ens, corr, BINSIZE, fit_window)
+                plot_effective_mass_fit(ens, corr, BINSIZE, fit_window, 1:T_middle)
+                save_figure("effective_mass_" * String(corr) * "_fit.pdf")
             catch e
                 @error "Failed!"
             end
@@ -118,6 +135,18 @@ for line in keys(list_of_ensembles)
             catch e
                 @error "Failed!"
             end
+            try
+                @info "Calculating mpiw0..."
+                ensembles[line][:mpiw0] = propagate_product(ensembles[line][:w0], ensembles[line][:g5_folded])
+            catch e
+                @error "Failed!"
+            end
+        end
+        try
+            @info "Calculating mpi^2..."
+            ensembles[line][:mpi2] = propagate_product(ensembles[line][:g5_folded], ensembles[line][:g5_folded])
+        catch e
+            @error "Failed!"
         end
         
     end
