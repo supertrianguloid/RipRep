@@ -2,16 +2,9 @@ using Base: nothing_sentinel
 #!julia
 using YAML
 using Dates
-using Logging
+using LoggingExtras
 
-io = nothing
-
-try
-    io = open(ARGS[2], "w+")
-    logger = SimpleLogger(io)
-    global_logger(logger)
-catch e
-end
+global_logger(FileLogger(ARGS[2]))
 
 
 
@@ -168,22 +161,12 @@ for line in keys(list_of_ensembles)
         catch e
             @error "Failed!"
         end
-        try
-	    flush(io)
-        catch
-        end
         
     end
     YAML.write_file(ensemble_path * "analysis.yml", ensembles[line])
     if contains_nans
         touch(ensemble_path * "CONTAINS_NANS")
     end
-end
-
-try
-    flush(io)
-    close(io)
-catch
 end
 
 
