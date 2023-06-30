@@ -1,4 +1,3 @@
-using Base: nothing_sentinel
 #!julia
 using YAML
 using Dates
@@ -172,7 +171,7 @@ function process_ensemble(line, ensemble_data)
     
 end
 
-Threads.@threads for line in [k for k in keys(list_of_ensembles)]
+for line in [k for k in keys(list_of_ensembles)]
     @info "Processing " * line
     analysis = process_ensemble(line, list_of_ensembles[line])
     ensemble[line] = analysis
