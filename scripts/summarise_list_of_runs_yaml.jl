@@ -1,5 +1,6 @@
 #!julia
 using YAML
+using Dates
 include(Base.source_dir()*"/../src/parser.jl")
 include(Base.source_dir()*"/../src/spectroscopy.jl")
 include(Base.source_dir()*"/../src/wilson.jl")
@@ -8,7 +9,7 @@ include(Base.source_dir()*"/../src/utilities.jl")
 #Turn off plot display because we are headless
 ENV["GKSwstype"]="nul"
 
-OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/"
+OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
 THERM = 1000
 BINSIZE = 10
 NO_FIT_POINTS = 4
@@ -17,7 +18,6 @@ WF_REF = 1.0
 
 ensembles = Dict()
 
-rm(OUTPUT_DIRECTORY, force = true, recursive = true)
 ensure_directory_exists(OUTPUT_DIRECTORY)
 
 list_of_ensembles = YAML.load_file(ARGS[1])
