@@ -4,7 +4,7 @@ using YAML
 using Dates
 using LoggingExtras
 
-global_logger(FileLogger(ARGS[2]))
+global_logger(MinLevelLogger(FileLogger(ARGS[2]), Logging.Info))
 
 
 
