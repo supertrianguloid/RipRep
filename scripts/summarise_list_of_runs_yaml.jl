@@ -172,9 +172,9 @@ function process_ensemble(line, ensemble_data)
     
 end
 
-for line in keys(list_of_ensembles)
+Threads.@threads for line in keys(list_of_ensembles)
     @info "Processing " * line
-    @async process_ensemble(line, list_of_ensembles[line])
+    process_ensemble(line, list_of_ensembles[line])
 end
 
 
