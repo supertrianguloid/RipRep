@@ -270,28 +270,28 @@ end
 
 function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_effective_mass(ens, corr, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
-    @show μ, σ
+    @info μ, σ
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
     
 function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_pcac_mass(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
-    @show μ, σ
+    @info μ, σ
     plot_pcac_mass(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
 
 function plot_gps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_gps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
-    @show μ, σ
+    @info μ, σ
     plot_gps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
 
 function plot_fps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_fps(ens, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
-    @show μ, σ
+    @info μ, σ
     plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
