@@ -32,7 +32,7 @@ list_of_ensembles = YAML.load_file(ARGS[1])
 for line in keys(list_of_ensembles)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     ensure_directory_exists(ensemble_path)
-    println("Processing " * line)
+    @info "Processing " * line
     wf = nothing
     try
         wf = list_of_ensembles[line]["wf"]
