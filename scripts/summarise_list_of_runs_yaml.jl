@@ -180,6 +180,7 @@ function process_ensemble(line, ensemble_data)
         if contains_nans
             touch(ensemble_path * "CONTAINS_NANS")
         end
+        return analysis
         
     end
     
