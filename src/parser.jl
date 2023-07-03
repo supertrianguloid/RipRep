@@ -58,7 +58,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
 
     runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
-    runs_where_the_rng_is_reseeded = filter(:rng => rng -> rng != [], dropmissing(select(ens.run_metadata, :run_number, names(ens.run_metadata, :rng)))).run_number
+    runs_where_the_rng_is_reseeded = filter(:rng => rng -> rng != [], dropmissing(select(run_metadata, :run_number, names(run_metadata, :rng)))).run_number
 
     global_metadata[:reseeded_confs] = [run_to_first_conf(data, i) for i in runs_where_the_rng_is_reseeded]
 
