@@ -49,12 +49,6 @@ end
 
 function extract_global_metadata(path::String, output_df::DataFrame, data::DataFrame, run_metadata::DataFrame)
     global_metadata = Dict{Any, Any}(:rng => missing)
-    
-    try
-        global_metadata[:rng] = only(output_df[output_df.name .== "SETUP_RANDOM", :].output)
-    catch error
-        @warn "Error extracting SETUP_RANDOM:" error
-    end
 
     global_metadata[:nconfs] = length(data.confno)
 
@@ -64,6 +58,14 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
 
     runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
+    runs_where_the_rng_is_reseeded = filter(:rng => rng -> rng != [], dropmissing(select(ens.run_metadata, :run_number, names(ens.run_metadata, :rng)))).run_number
+
+    global_metadata[:reseeded_confs] = [run_to_first_conf(data, i) for i in runs_where_the_rng_is_reseeded]
+
+    if global_metadata[:reseeded_confs] != []
+        @warn "RNG reseeded until conf " * string(last(global_metadata[:reseeded_confs]))
+    end
+    
     global_metadata[:integrator_changes] = [run_to_first_conf(data, i) for i in runs_where_the_integrator_changes]
                                                 
     global_metadata[:geometry] = only(union(run_metadata.geometry))
@@ -444,43 +446,43 @@ function extract_measurements_only(df::DataFrame)
 end
 
 function load_ensemble(path::String)
-    @info "Loading the output file..."
+    @debug "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
-    @info "Checking file health..."
+    @debug "Checking file health..."
     file_health_checks(output_df)
-    @info "Extracting runs..."
+    @debug "Extracting runs..."
     output_df = add_run_number_to_output_df(output_df)
     runs = split_output_dataframe_into_runs(output_df)
-    @info "Extracting run metadata..."
+    @debug "Extracting run metadata..."
     run_metadata = extract_run_metadata(runs)
-    @info "Checking runs health..."
+    @debug "Checking runs health..."
     run_health_checks(run_metadata)
-    @info "Extracting trajectories..."
+    @debug "Extracting trajectories..."
     trajectories = split_run_dataframe_into_trajectories(runs)
-    @info "Extracting trajectory data..."
+    @debug "Extracting trajectory data..."
     trajectory_data = extract_trajectory_data(trajectories)
-    @info "Dropping missing configurations..."
+    @debug "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
-    @info "Post-processing correlators"
+    @debug "Post-processing correlators"
     data = post_process_correlators(data)
-    @info "Extracting global metadata..."
+    @debug "Extracting global metadata..."
     global_metadata = extract_global_metadata(path, output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)
 end
 
 function load_wilsonflow(path::String)
-    @info "Loading the output file..."
+    @debug "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
-    @info "Checking file health..."
+    @debug "Checking file health..."
     file_health_checks(output_df)
-    @info "Extracting runs..."
+    @debug "Extracting runs..."
     output_df = add_run_number_to_output_df(output_df)
     runs = split_output_dataframe_into_runs(output_df, keep_runs_without_trajectories=true)
-    @info "Extracting metadata..."
+    @debug "Extracting metadata..."
     metadata = extract_wf_metadata(runs[1])
-    @info "Extracting trajectories..."
+    @debug "Extracting trajectories..."
     trajectories = split_wf_dataframe_into_trajectories(runs)
-    @info "Extracting trajectory data..."
+    @debug "Extracting trajectory data..."
     trajectory_data = extract_wf_trajectory_data(trajectories, metadata)
     trajectory_data = wilson_flow_same_tmax(trajectory_data)
     return WilsonFlow(metadata, trajectory_data, trajectory_data)
