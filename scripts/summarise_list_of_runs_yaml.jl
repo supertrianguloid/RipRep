@@ -31,7 +31,7 @@ list_of_ensembles = YAML.load_file(ARGS[1])
 function process_ensemble(line, ensemble_data)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     ensure_directory_exists(ensemble_path)
-    with_logger(FileLogger(ensemble_path * "analysis.log"), Logging.Info) do
+    with_logger(FileLogger(ensemble_path * "analysis.log")) do
         wf = nothing
         try
             wf = ensemble_data["wf"]
