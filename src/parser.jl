@@ -444,6 +444,7 @@ function extract_measurements_only(df::DataFrame; β, csw)
     metadata[:β] = β
     metadata[:csw] = csw
     metadata[:nan_confs] = nan_confs
+    metadata[:nconfs] = nrow(traj_data)
 
     traj_data = post_process_correlators(traj_data)
     
