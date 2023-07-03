@@ -39,9 +39,15 @@ function process_ensemble(line, ensemble_data)
             @info "Successfully loaded Wilson flow data"
         catch e
         end
-
         save_figure(name) = savefig(ensemble_path * name)
-        ens = load_ensemble(line)
+
+        ens = nothing
+        
+        if ensemble_data["measurements_only"] == "true"
+            ens = load_measurements(line, β = ensemble_data["β"], csw = ensemble_data["csw"])
+        else
+            ens = load_ensemble(line)
+        end
         analysis = deepcopy(ens.global_metadata)
         contains_nans = ens.global_metadata[:nan_confs] != []
         if ens.global_metadata[:nconfs] > 1100 && !contains_nans

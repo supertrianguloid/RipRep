@@ -416,7 +416,7 @@ function post_process_correlators(trajectory_data)
     return trajectory_data
 end
 
-function extract_measurements_only(df::DataFrame)
+function extract_measurements_only(df::DataFrame; β, csw)
     masses = []
     meas_lines = _extractor_all_matching_lines(MEAS_REGEX, "MAIN", df)
     nconfs = parse(Int64, match(MEAS_REGEX, last(meas_lines)).captures[1])
@@ -439,6 +439,8 @@ function extract_measurements_only(df::DataFrame)
     metadata = Dict()
     metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", df, vital=true)), "x")), 0:3)
     metadata[:m0] = mass
+    metadata[:β] = β
+    metadata[:csw] = csw
 
     traj_data = post_process_correlators(traj_data)
     
@@ -488,3 +490,8 @@ function load_wilsonflow(path::String)
     return WilsonFlow(metadata, trajectory_data, trajectory_data)
 end
     
+function load_measurements(path::String; β, csw)
+    @debug "Loading the output file..."
+    output_df = load_output_file_as_dataframe(path)
+    return extract_measurements_only(output_df, β = β, csw = csw)
+end
