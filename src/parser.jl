@@ -432,6 +432,8 @@ function extract_measurements_only(df::DataFrame; β, csw)
 
     traj_data = DataFrame([Int[], fill(Union{OffsetArray{Float64}, Missing}[], length(CORRELATORS))...], [:confno, CORRELATORS...])
 
+    nan_confs = find_nans(traj_data)
+
     for i in 1:nconfs
         push!(traj_data, [i; getindex.(Ref(measurements[i]), [CORRELATORS...])])
     end
@@ -441,6 +443,7 @@ function extract_measurements_only(df::DataFrame; β, csw)
     metadata[:m0] = mass
     metadata[:β] = β
     metadata[:csw] = csw
+    metadata[:nan_confs] = nan_confs
 
     traj_data = post_process_correlators(traj_data)
     
