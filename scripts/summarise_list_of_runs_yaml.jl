@@ -43,7 +43,7 @@ function process_ensemble(line, ensemble_data)
 
         ens = nothing
         
-        if "measurements_only" in keys(ensemble_data)
+        if ensemble_data != nothing && "measurements_only" in keys(ensemble_data)
             ens = load_measurements(line, β = ensemble_data["β"], csw = ensemble_data["csw"])
         else
             ens = load_ensemble(line)
