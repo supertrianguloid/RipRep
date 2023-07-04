@@ -162,6 +162,18 @@ function process_ensemble(line, ensemble_data)
                 catch e
                     @error "Failed!"
                 end
+                try
+                    @info "Calculating mpiw0..."
+                    analysis[:mpiw02] = propagate_product(analysis[:mpiw0], analysis[:mpiw0])
+                catch e
+                    @error "Failed!"
+                end
+                try
+                    @info "Calculating mpcacw0..."
+                    analysis[:mpcacw0] = propagate_product(analysis[:w0], analysis[:m_pcac])
+                catch e
+                    @error "Failed!"
+                end
             end
             try
                 @info "Calculating mpi^2..."
