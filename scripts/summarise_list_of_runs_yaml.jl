@@ -68,6 +68,7 @@ function process_ensemble(line, ensemble_data)
                 save_figure("plaquette.pdf")
             catch e
                 @error "Failed!"
+                @error e
             end
             try
                 @info "PCAC mass..."
@@ -79,6 +80,7 @@ function process_ensemble(line, ensemble_data)
                 save_figure("pcac_mass_fit.pdf")
             catch e
                 @error "Failed!"
+                @error e
             end
             try
                 @info "Fps..."
@@ -90,6 +92,7 @@ function process_ensemble(line, ensemble_data)
                 save_figure("fps_fit.pdf")
             catch e
                 @error "Failed!"
+                @error e
             end
             try
                 @info "Gps..."
@@ -101,6 +104,7 @@ function process_ensemble(line, ensemble_data)
                 save_figure("gps_fit.pdf")
             catch e
                 @error "Failed!"
+                @error e
             end
             for corr in corrs
                 try
@@ -113,6 +117,7 @@ function process_ensemble(line, ensemble_data)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
                 catch e
                     @error "Failed!"
+                    @error e
                 end
             end
             try
@@ -123,6 +128,7 @@ function process_ensemble(line, ensemble_data)
                 analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
             catch e
                 @error "Failed!"
+                @error e
             end
             if wf != nothing
                 @info "Wilson flow..."
@@ -132,6 +138,7 @@ function process_ensemble(line, ensemble_data)
                     save_figure("t2e.pdf")
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "W..."
@@ -139,6 +146,7 @@ function process_ensemble(line, ensemble_data)
                     save_figure("W.pdf")
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Topological Charge..."
@@ -146,6 +154,7 @@ function process_ensemble(line, ensemble_data)
                     save_figure("tc.pdf")
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Topological Charge Histogram..."
@@ -153,6 +162,7 @@ function process_ensemble(line, ensemble_data)
                     save_figure("tc_hist.pdf")
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Calculating w0..."
@@ -160,24 +170,28 @@ function process_ensemble(line, ensemble_data)
                     analysis[:w0] = w0
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Calculating mpiw0..."
                     analysis[:mpiw0] = propagate_product(analysis[:w0], analysis[:g5_folded])
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Calculating mpiw0..."
                     analysis[:mpiw02] = propagate_product(analysis[:mpiw0], analysis[:mpiw0])
                 catch e
                     @error "Failed!"
+                    @error e
                 end
                 try
                     @info "Calculating mpcacw0..."
                     analysis[:mpcacw0] = propagate_product(analysis[:w0], analysis[:m_pcac])
                 catch e
                     @error "Failed!"
+                    @error e
                 end
             end
             try
@@ -185,12 +199,14 @@ function process_ensemble(line, ensemble_data)
                 analysis[:mpi2] = propagate_product(analysis[:g5_folded], analysis[:g5_folded])
             catch e
                 @error "Failed!"
+                @error e
             end
             try
                 @info "Calculating mpiL..."
                 analysis[:mpiL] = analysis[:g5_folded][1]*L
             catch e
                 @error "Failed!"
+                @error e
             end
         end
         YAML.write_file(ensemble_path * "analysis.yml", analysis)
