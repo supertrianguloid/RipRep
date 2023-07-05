@@ -50,7 +50,12 @@ function process_ensemble(line, ensemble_data)
         end
         analysis = deepcopy(ens.global_metadata)
         contains_nans = ens.global_metadata[:nan_confs] != []
-        if ens.global_metadata[:nconfs] > 1100 && !contains_nans
+        if !contains_nans
+            if ens.global_metadata[:nconfs] > 1100
+                thermalise!(ens, 1000)
+            elseif ens.global_metadata[:nconfs] > 500
+                thermalise!(ens, 400)
+            end
             corrs = [:g5_folded, :gk_folded, :id_folded]
             T = ens.global_metadata[:geometry][0]
             L = ens.global_metadata[:geometry][1]
