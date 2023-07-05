@@ -44,37 +44,40 @@ function effective_pcac(df::DataFrame)
 end
 
 function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    pcac = []
-    for i in 1:nboot
+    pcac = [OffsetVector{Float64, Vector{Float64}}[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         data = get_subsample(df, binsize, method=binmethod)
-        push!(pcac, effective_pcac(data))
+        push!(pcac[Threads.threadid()], effective_pcac(data))
     end
+    pcac = reduce(vcat, pcac)
     return [mean(pcac), std(pcac)]
 end
 
 function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    pcac = []
-    for i in 1:nboot
+    pcac = [OffsetVector{Float64, Vector{Float64}}[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         data = get_subsample(df, binsize, method=binmethod)
-        push!(pcac, effective_pcac(data))
+        push!(pcac[Threads.threadid()], effective_pcac(data))
     end
     return pcac
 end
 
 function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    fit = []
-    for i in 1:nboot
+    fit = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
         μ, σ = bootstrap_effective_pcac(subsample, 1, binmethod=binmethod, nboot=nboot)
-        push!(fit, only(fit_const(fitting_range, μ, σ).param))
+        push!(fit[Threads.threadid()], only(fit_const(fitting_range, μ, σ).param))
     end
+    fit = reduce(vcat, fit)
+
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
 end
 
 function effective_mass(correlator, T)
-    meffs = []
+    meffs = Float64[]
     eq(m, τ) = h(T, τ - 1, 0, m)/h(T, τ, 0, m) - correlator[τ - 1]/correlator[τ]
     for τ in eachindex(correlator)[1:end]
         push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
@@ -94,25 +97,27 @@ function effective_gps(correlator, T, L)
 end
 
 function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    gps = []
+    gps = [Vector{Float64}[] for _ in 1:Threads.nthreads()]
     T = length(df[1, :g5])
     
-    for i in 1:nboot
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
         c = mean(subsample[:, :g5_folded])
-        push!(gps, effective_gps(c, T, L))
+        push!(gps[Threads.threadid()], effective_gps(c, T, L))
     end
+    gps = reduce(vcat, gps)
     return [mean(gps), std(gps)]
 end
 
 function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
-    fit = []
-    for i in 1:nboot
+    fit = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
         μ, σ = bootstrap_effective_gps(subsample, L, 1, binmethod=binmethod, nboot=nboot)
-        push!(fit, only(fit_const(fitting_range, μ, σ).param))
+        push!(fit[Threads.threadid()], only(fit_const(fitting_range, μ, σ).param))
     end
+    fit = reduce(vcat, fit)
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
@@ -126,34 +131,36 @@ function effective_fps(df::DataFrame, T, L)
 end
 
 function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    fps = []
-    for i in 1:nboot
+    fps = [OffsetArray{Float64}[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
-        push!(fps, effective_fps(subsample, T, L))
+        push!(fps[Threads.threadid()], effective_fps(subsample, T, L))
     end
+    fps = reduce(vcat, fps)
     return [mean(fps), std(fps)]
 end
 
 function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
-    fit = []
-    for i in 1:nboot
+    fit = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
         μ, σ = bootstrap_effective_fps(subsample, T, L, 1, binmethod=binmethod, nboot=nboot)
-        push!(fit, only(fit_const(fitting_range, μ, σ).param))
+        push!(fit[Threads.threadid()], only(fit_const(fitting_range, μ, σ).param))
     end
+    fit = reduce(vcat, fit)
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
 end
 
 function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
-    meff_boot = []
+    meff_boot = [Vector{Vector{Float64}}() for _ in 1:Threads.nthreads()]
     
     T = length(df[1, :g5])
     
-    for i in 1:nboot
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
         c = mean(subsample[:, corr])
         if range != :all
@@ -161,19 +168,20 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
         end
         
         effective_masses = effective_mass(c, T)
-        push!(meff_boot, effective_masses)
+        push!(meff_boot[Threads.threadid()], effective_masses)
     end
+    meff_boot = reduce(vcat, meff_boot)
     μ = mean(meff_boot)
     σ = std(meff_boot)
     return [μ, σ]
 end
 
 function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_denominator, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
-    meff_boot = []
+    meff_boot = [Vector{Float64}[] for _ in 1:Threads.nthreads()]
     
     T = length(df[1, :g5])
     
-    for i in 1:nboot
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(df, binsize, method=binmethod)
         numerator = mean(subsample[:, corr_numerator])
         denominator = mean(subsample[:, corr_denominator])
@@ -183,21 +191,22 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
         end
         
         effective_masses = effective_mass_ratio(numerator, denominator, T)
-        push!(meff_boot, effective_masses)
+        push!(meff_boot[Threads.threadid()], effective_masses)
     end
+    meff_boot = reduce(vcat, meff_boot)
     μ = mean(meff_boot)
     σ = std(meff_boot)
     return [μ, σ]
 end
 
 function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    fit = []
-    for i in 1:nboot
+    fit = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         subsample = get_subsample(ens.analysis, binsize, method=binmethod)
         μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot)
-        push!(fit, only(fit_const(fitting_range, μ, σ).param))
-               
+        push!(fit[Threads.threadid()], only(fit_const(fitting_range, μ, σ).param))
     end
+    fit = reduce(vcat, fit)
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
