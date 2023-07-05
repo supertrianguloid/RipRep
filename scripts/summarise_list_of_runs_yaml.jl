@@ -16,7 +16,6 @@ include(Base.source_dir()*"/../src/utilities.jl")
 ENV["GKSwstype"]="nul"
 
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
-THERM = 1000
 BINSIZE = 10
 NO_FIT_POINTS = 4
 
@@ -61,7 +60,6 @@ function process_ensemble(line, ensemble_data)
             L = ens.global_metadata[:geometry][1]
             T_middle = T ÷ 2
             fit_window = (T_middle - NO_FIT_POINTS):T_middle
-            thermalise!(ens, THERM)
             try
                 @info "Plotting plaquette..."
                 plot_plaquette(ens)
