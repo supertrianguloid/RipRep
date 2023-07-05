@@ -335,6 +335,7 @@ function wilson_flow_same_tmax(trajectory_data::DataFrame)
             trajectory_data[i, meas] = trajectory_data[i, meas][1:tmax]
         end
         trajectory_data[i, :W] = trajectory_data[i, :W][1:wmax]
+        trajectory_data[i, :Wsym] = trajectory_data[i, :Wsym][1:wmax]
     end
     return trajectory_data
 end
