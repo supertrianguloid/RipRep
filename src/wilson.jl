@@ -69,17 +69,20 @@ end
 function _find_t0(wf, data, window, dt; nboot = 100, ref = 1.0)
     n1 = _wf_time_to_index(wf, window[1])
     n2 = _wf_time_to_index(wf, window[2])
-    m = []
-    c = []
-    for i in 1:nboot
+    m = [Float64[] for _ in 1:Threads.nthreads()]
+    c = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         s = rand(1:nrow(data), nrow(data))
         σ² = var(data[s, :t²E])
         mu = mean(data[s, :t²E])
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
-        push!(m, fit.param[1])
-        push!(c, fit.param[2])
+        push!(m[Threads.threadid()], fit.param[1])
+        push!(c[Threads.threadid()], fit.param[2])
     end
+    c = reduce(vcat, c)
+    m = reduce(vcat, m)
+    
     t = reference_time(ref, mean(c), var(c), mean(m), var(m), cov(m, c))
     return t
 end
@@ -87,9 +90,9 @@ end
 function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
     n1 = _wf_time_to_index_w(wf, window[1])
     n2 = _wf_time_to_index_w(wf, window[2])
-    m = []
-    c = []
-    for i in 1:nboot
+    m = [Float64[] for _ in 1:Threads.nthreads()]
+    c = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         sample = get_subsample(wf.analysis, binsize)
         if(sym)
             σ² = var(sample[:, :Wsym])
@@ -100,10 +103,12 @@ function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = tru
         end
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
-        push!(m, fit.param[1])
-        push!(c, fit.param[2])
+        push!(m[Threads.threadid()], fit.param[1])
+        push!(c[Threads.threadid()], fit.param[2])
 
     end
+    c = reduce(vcat, c)
+    m = reduce(vcat, m)
     w = reference_time(ref, mean(c), var(c), mean(m), var(m), cov(m, c))
     return [sqrt(w[1]), w[2]/(2*sqrt(w[1]))]
 end
@@ -111,8 +116,8 @@ end
 function _find_w0_fullbootstrap(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
     n1 = _wf_time_to_index_w(wf, window[1])
     n2 = _wf_time_to_index_w(wf, window[2])
-    w = []
-    for i in 1:nboot
+    w = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
         sample = get_subsample(wf.analysis, binsize)
         if(sym)
             σ² = var(sample[:, :Wsym])
@@ -124,8 +129,9 @@ function _find_w0_fullbootstrap(wf, window, dt; binsize = 1, nboot = 100, ref = 
         @. model(x, params) = params[1]*x + params[2]
         fit = curve_fit(model, (n1:n2).*dt, mu[n1:n2], (1 ./σ²)[n1:n2], [0.0, 0.0])
         m, c = fit.param
-        push!(w, sqrt((ref - c)/m))
+        push!(w[Threads.threadid()], sqrt((ref - c)/m))
     end
+    w = reduce(vcat, w)
     return [mean(w), std(w)]
 end
 
@@ -142,10 +148,11 @@ function find_t0(wf, window; nboot = 100, ref = 1.0)
 end
 
 function error_on_error_w0(wf, window; nboot = 100, ref = 1.0)
-    w0 = []
-    for i in 1:nboot
-        push!(w0, _find_w0(wf, wf.analysis[rand(1:nrow(wf.analysis), nrow(wf.analysis)), :], window, wf.metadata.dt, nboot=nboot, ref=ref))
+    w0 = [Float64[] for _ in 1:Threads.nthreads()]
+    Threads.@threads for i in 1:nboot
+        push!(w0[Threads.threadid()], _find_w0(wf, wf.analysis[rand(1:nrow(wf.analysis), nrow(wf.analysis)), :], window, wf.metadata[:dt], nboot=nboot, ref=ref))
     end
+    w0 = reduce(vcat, w0)
     w0 = collect.(w0)
     return hcat(mean(w0)..., std(w0)...)
 end
