@@ -408,7 +408,9 @@ end
 
 function post_process_correlators(trajectory_data)
     trajectory_data[:, :gk] = (trajectory_data[:, :g1] + trajectory_data[:, :g2] + trajectory_data[:, :g3])/3
+    trajectory_data[:, :g5gk] = (trajectory_data[:, :g5g1] + trajectory_data[:, :g5g2] + trajectory_data[:, :g5g3])/3
     trajectory_data[:, :dg5_g0g5_re] = _corr_derivative(trajectory_data[:, :g5_g0g5_re])
+    trajectory_data[:, :g5gk_folded] = _fold(trajectory_data[:, :g5gk])
     trajectory_data[:, :gk_folded] = _fold(trajectory_data[:, :gk])
     trajectory_data[:, :g5_folded] = _fold(trajectory_data[:, :g5])
     trajectory_data[:, :id_folded] = _fold(trajectory_data[:, :id])
