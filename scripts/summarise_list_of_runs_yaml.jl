@@ -56,7 +56,7 @@ function process_ensemble(line, ensemble_data)
         catch
         end
         if !contains_nans
-            if therm != nothing_sentinel
+            if therm != nothing
                 thermalise!(ens, therm)
             elseif ens.global_metadata[:nconfs] > 1100
                 thermalise!(ens, 1000)
