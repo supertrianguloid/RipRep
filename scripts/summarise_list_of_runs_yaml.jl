@@ -1,3 +1,4 @@
+using Base: nothing_sentinel
 #!julia
 using YAML
 using Dates
@@ -49,8 +50,15 @@ function process_ensemble(line, ensemble_data)
         end
         analysis = deepcopy(ens.global_metadata)
         contains_nans = ens.global_metadata[:nan_confs] != []
+        therm = nothing
+        try
+	   therm = ensemble_data["therm"]
+        catch
+        end
         if !contains_nans
-            if ens.global_metadata[:nconfs] > 1100
+            if therm != nothing_sentinel
+                thermalise!(ens, therm)
+            elseif ens.global_metadata[:nconfs] > 1100
                 thermalise!(ens, 1000)
             elseif ens.global_metadata[:nconfs] > 500
                 thermalise!(ens, 400)
