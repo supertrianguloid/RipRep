@@ -13,6 +13,7 @@ MEAS_REGEX = r"^conf #(.*) mass=(.*) DEFAULT_SEMWALL TRIPLET (.*)= (.*) $"
 WF_TRAJ_BEGIN_REGEX = r"^Configuration from (.*)$"
 WF_TRAJ_BEGIN_REGEX_RUN_NUMBER = r"^Configuration from .*n([0-9]+)$"
 WF_MEASUREMENT_REGEX = r"^WF \(t,E,t2\*E,Esym,t2\*Esym,TC\) = (.*)$"
+WF_TIMING_REGEX = r".* done \[(.*) sec (.*) usec\]$"
 CORRELATORS = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
 
 mutable struct Ensemble
@@ -298,11 +299,18 @@ end
 
 function extract_wf_trajectory_data(trajectories, metadata)
     obs = [:t, :E, :t2E, :Esym, :t2Esym, :TC, :W, :Wsym]
-    traj_data = DataFrame([Int[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, obs...])
+    traj_data = DataFrame([Int[], Union{Float64, Missing}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[], Vector{Float64}[]], [:confno, :time, obs...])
 
     for traj in trajectories
         data = Dict()
         data[:confno] = parse(Int, only(_extractor_only_one_matching_line(WF_TRAJ_BEGIN_REGEX_RUN_NUMBER, "MAIN", traj, vital=true)))
+
+        data[:time] = missing
+
+        time = _extractor_only_one_matching_line(WF_TIMING_REGEX, "TIMING", traj)
+        if !isnothing(time)
+            data[:time] = parse(Int, time[1]) + 1e-6*parse(Int, time[2])
+        end
 
         meas = []
 
@@ -320,7 +328,7 @@ function extract_wf_trajectory_data(trajectories, metadata)
         data[:W] = parent(d(data[:t2E], h = metadata[:dt])) .* data[:t][2 : end - 1]
         data[:Wsym] = parent(d(data[:t2Esym], h = metadata[:dt])) .* data[:t][2 : end - 1]
 
-        push!(traj_data, [data[:confno], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC], data[:W], data[:Wsym]])
+        push!(traj_data, [data[:confno], data[:time], data[:t], data[:E], data[:t2E], data[:Esym], data[:t2Esym], data[:TC], data[:W], data[:Wsym]])
     end
     
     return traj_data
