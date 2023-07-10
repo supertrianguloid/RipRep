@@ -17,7 +17,7 @@ include(Base.source_dir()*"/../src/utilities.jl")
 ENV["GKSwstype"]="nul"
 
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
-BINSIZE = 10
+DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
 
 WF_REF = 1.0
@@ -55,6 +55,15 @@ function process_ensemble(line, ensemble_data)
 	   therm = ensemble_data["therm"]
         catch
         end
+        custom_bs = nothing
+        try
+	   custom_bs = ensemble_data["binsize"]
+        catch
+        end
+        bs = BINSIZE
+        if custom_bs != nothing
+            bs = custom_bs
+        end
         if !contains_nans
             if therm != nothing
                 thermalise!(ens, therm)
@@ -78,11 +87,11 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "PCAC mass..."
-                analysis[:pcac] = bootstrap_effective_pcac(ens.analysis, BINSIZE)
-                plot_pcac_mass(ens, BINSIZE)
+                analysis[:pcac] = bootstrap_effective_pcac(ens.analysis, bs)
+                plot_pcac_mass(ens, bs)
                 save_figure("pcac_mass.pdf")
-                analysis[:m_pcac] = fit_pcac_mass(ens, BINSIZE, fit_window)
-                plot_pcac_fit(ens, BINSIZE, fit_window, 1:T_middle)
+                analysis[:m_pcac] = fit_pcac_mass(ens, bs, fit_window)
+                plot_pcac_fit(ens, bs, fit_window, 1:T_middle)
                 save_figure("pcac_mass_fit.pdf")
             catch e
                 @error "Failed!"
@@ -90,11 +99,11 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Fps..."
-                analysis[:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, BINSIZE)
-                plot_fps(ens, BINSIZE)
+                analysis[:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, bs)
+                plot_fps(ens, bs)
                 save_figure("fps.pdf")
-                analysis[:fps] = fit_fps(ens, BINSIZE, fit_window)
-                plot_fps_fit(ens, BINSIZE, fit_window, 1:T_middle)
+                analysis[:fps] = fit_fps(ens, bs, fit_window)
+                plot_fps_fit(ens, bs, fit_window, 1:T_middle)
                 save_figure("fps_fit.pdf")
             catch e
                 @error "Failed!"
@@ -102,11 +111,11 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Gps..."
-                analysis[:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], BINSIZE)
-                plot_gps(ens, BINSIZE)
+                analysis[:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], bs)
+                plot_gps(ens, bs)
                 save_figure("gps.pdf")
-                analysis[:gps] = fit_gps(ens, BINSIZE, fit_window)
-                plot_gps_fit(ens, BINSIZE, fit_window, 1:T_middle)
+                analysis[:gps] = fit_gps(ens, bs, fit_window)
+                plot_gps_fit(ens, bs, fit_window, 1:T_middle)
                 save_figure("gps_fit.pdf")
             catch e
                 @error "Failed!"
@@ -115,11 +124,11 @@ function process_ensemble(line, ensemble_data)
             for corr in corrs
                 try
                     @info String(corr) * "..."
-                    analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, BINSIZE)
-                    plot_effective_mass(ens, corr, BINSIZE)
+                    analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, bs)
+                    plot_effective_mass(ens, corr, bs)
                     save_figure("effective_mass_" * String(corr) * ".pdf")
-                    analysis[corr] = fit_effective_mass(ens, corr, BINSIZE, fit_window)
-                    plot_effective_mass_fit(ens, corr, BINSIZE, fit_window, 1:T_middle)
+                    analysis[corr] = fit_effective_mass(ens, corr, bs, fit_window)
+                    plot_effective_mass_fit(ens, corr, bs, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
                 catch e
                     @error "Failed!"
@@ -128,8 +137,8 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "mv/mpi..."
-                analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(ens.analysis, :gk_folded, :g5_folded, BINSIZE)
-                plot_effective_mass_ratio(ens, :gk_folded, :g5_folded, BINSIZE)
+                analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(ens.analysis, :gk_folded, :g5_folded, bs)
+                plot_effective_mass_ratio(ens, :gk_folded, :g5_folded, bs)
                 save_figure("effective_ratio_mv_mpi.pdf")
                 analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
             catch e
@@ -140,7 +149,7 @@ function process_ensemble(line, ensemble_data)
                 @info "Wilson flow..."
                 try
                     @info "t²E..."
-                    plot_t2e(wf, binsize = BINSIZE)
+                    plot_t2e(wf, binsize = bs)
                     save_figure("t2e.pdf")
                 catch e
                     @error "Failed!"
@@ -148,7 +157,7 @@ function process_ensemble(line, ensemble_data)
                 end
                 try
                     @info "W..."
-                    plot_w(wf, binsize = BINSIZE)
+                    plot_w(wf, binsize = bs)
                     save_figure("W.pdf")
                 catch e
                     @error "Failed!"
