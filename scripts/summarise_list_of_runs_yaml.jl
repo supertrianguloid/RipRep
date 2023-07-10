@@ -60,7 +60,7 @@ function process_ensemble(line, ensemble_data)
 	   custom_bs = ensemble_data["binsize"]
         catch
         end
-        bs = BINSIZE
+        bs = DEFAULT_BINSIZE
         if custom_bs != nothing
             bs = custom_bs
         end
@@ -72,6 +72,8 @@ function process_ensemble(line, ensemble_data)
             elseif ens.global_metadata[:nconfs] > 500
                 thermalise!(ens, 400)
             end
+            analysis[:binsize] = bs
+            analysis[:therm] = first(ens.analysis).confno
             corrs = [:g5_folded, :gk_folded, :id_folded]
             T = ens.global_metadata[:geometry][0]
             L = ens.global_metadata[:geometry][1]
