@@ -70,10 +70,14 @@ function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, n
 end
 
 function effective_mass(correlator, T)
-    meffs = Float64[]
+    meffs = Union{Float64, Missing}[]
     eq(m, τ) = h(T, τ - 1, 0, m)/h(T, τ, 0, m) - correlator[τ - 1]/correlator[τ]
     for τ in eachindex(correlator)[1:end]
-        push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
+        try
+            push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
+        catch error
+            push!(meffs, missing)
+        end
     end
     return meffs               
 end
