@@ -1,3 +1,4 @@
+using Plots: error_zipit
 using Plots
 using Statistics
 using Roots
@@ -45,8 +46,19 @@ function effective_pcac(df::DataFrame)
 end
 
 function bootstrap_effective_pcac(df::DataFrame, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    res = [@spawn effective_pcac(get_subsample(df, binsize, method=binmethod)) for i in 1:nboot]
+    res = [@spawn try
+                    effective_pcac(get_subsample(df, binsize, method=binmethod))
+                catch error
+                  missing
+                end for i in 1:nboot]
+    
+
     pcac = fetch.(res)
+    nfailures = sum(ismissing.(pcac))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    pcac = [i for i in pcac if !ismissing(i)]
     return [mean(pcac), std(pcac)]
 end
 
@@ -57,12 +69,19 @@ function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod
 end
 
 function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    res = [@spawn begin
-                    subsample = get_subsample(ens.analysis, binsize, method=binmethod)
-                    μ, σ = bootstrap_effective_pcac(subsample, 1, binmethod=binmethod, nboot=nboot)
-                    only(fit_const(fitting_range, μ, σ).param)
-                  end for i in 1:nboot]
+    res = [@spawn   try
+                        subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+                        μ, σ = bootstrap_effective_pcac(subsample, 1, binmethod=binmethod, nboot=nboot)
+                        only(fit_const(fitting_range, μ, σ).param)
+                    catch error
+                        missing
+                    end for i in 1:nboot]
     fit = fetch.(res)
+    nfailures = sum(ismissing.(fit))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    fit = [i for i in fit if !ismissing(i)]
 
     μ = mean(fit)
     σ = std(fit)
@@ -70,14 +89,10 @@ function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, n
 end
 
 function effective_mass(correlator, T)
-    meffs = Union{Float64, Missing}[]
+    meffs = Float64[]
     eq(m, τ) = h(T, τ - 1, 0, m)/h(T, τ, 0, m) - correlator[τ - 1]/correlator[τ]
     for τ in eachindex(correlator)[1:end]
-        try
-            push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
-        catch error
-            push!(meffs, missing)
-        end
+        push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
     end
     return meffs               
 end
@@ -95,23 +110,37 @@ end
 
 function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     T = length(df[1, :g5])
-    res = [@spawn begin
+    res = [@spawn try
                 subsample = get_subsample(df, binsize, method=binmethod)
                 c = mean(subsample[:, :g5_folded])
                 effective_gps(c, T, L)
-            end for i in 1:nboot]
+           catch e
+               missing
+           end for i in 1:nboot]
     gps = fetch.(res)
+    nfailures = sum(ismissing.(gps))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    gps = [i for i in gps if !ismissing(i)]
     return [mean(gps), std(gps)]
 end
 
 function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
-    res = [@spawn begin
+    res = [@spawn try
                 subsample = get_subsample(ens.analysis, binsize, method=binmethod)
                 μ, σ = bootstrap_effective_gps(subsample, L, 1, binmethod=binmethod, nboot=nboot)
                 only(fit_const(fitting_range, μ, σ).param)
-            end for i in 1:nboot]
+           catch e
+               missing
+           end for i in 1:nboot]
     fit = fetch.(res)
+    nfailures = sum(ismissing.(fit))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    fit = [i for i in fit if !ismissing(i)]
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
@@ -125,23 +154,37 @@ function effective_fps(df::DataFrame, T, L)
 end
 
 function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    res = [@spawn begin
+    res = [@spawn try
                     subsample = get_subsample(df, binsize, method=binmethod)
                     effective_fps(subsample, T, L)
+           catch e
+               missing
                end for i in 1:nboot]
     fps = fetch.(res)
+    nfailures = sum(ismissing.(fps))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    fps = [i for i in fps if !ismissing(i)]
     return [mean(fps), std(fps)]
 end
 
 function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
-    res = [@spawn begin
+    res = [@spawn try
                     subsample = get_subsample(ens.analysis, binsize, method=binmethod)
                     μ, σ = bootstrap_effective_fps(subsample, T, L, 1, binmethod=binmethod, nboot=nboot)
                     only(fit_const(fitting_range, μ, σ).param)
-                  end for i in 1:nboot]
+           catch e
+               missing
+               end for i in 1:nboot]
     fit = fetch.(res)
+    nfailures = sum(ismissing.(fit))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    fit = [i for i in fit if !ismissing(i)]
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
@@ -151,15 +194,22 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
     
     T = length(df[1, :g5])
     
-    res = [@spawn begin
+    res = [@spawn try
                     subsample = get_subsample(df, binsize, method=binmethod)
                     c = mean(subsample[:, corr])
                     if range != :all
                         c = c[range]
                     end
                     effective_mass(c, T)
-                  end for i in 1:nboot]
+           catch e
+               missing
+               end for i in 1:nboot]
     meff_boot = fetch.(res)
+    nfailures = sum(ismissing.(meff_boot))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    meff_boot = [i for i in meff_boot if !ismissing(i)]
     μ = mean(meff_boot)
     σ = std(meff_boot)
     return [μ, σ]
@@ -169,7 +219,7 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
     
     T = length(df[1, :g5])
     
-    res = [@spawn begin
+    res = [@spawn try
                     subsample = get_subsample(df, binsize, method=binmethod)
                     numerator = mean(subsample[:, corr_numerator])
                     denominator = mean(subsample[:, corr_denominator])
@@ -179,20 +229,34 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
                     end
 
                     effective_mass_ratio(numerator, denominator, T)
-                  end for i in 1:nboot]
+           catch e
+               missing
+               end for i in 1:nboot]
     meff_boot = fetch.(res)
+    nfailures = sum(ismissing.(meff_boot))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    meff_boot = [i for i in meff_boot if !ismissing(i)]
     μ = mean(meff_boot)
     σ = std(meff_boot)
     return [μ, σ]
 end
 
 function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    res = [@spawn begin
+    res = [@spawn try
                       subsample = get_subsample(ens.analysis, binsize, method=binmethod)
                       μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot)
                       only(fit_const(fitting_range, μ, σ).param)
-                  end for i in 1:nboot]
+           catch e
+               missing
+               end for i in 1:nboot]
     fit = fetch.(fit_effective_mass)
+    nfailures = sum(ismissing.(fit))
+    if nfailures > 0
+        @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
+    end
+    fit = [i for i in fit if !ismissing(i)]
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
