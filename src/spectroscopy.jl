@@ -251,7 +251,7 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
            catch e
                missing
                end for i in 1:nboot]
-    fit = fetch.(fit_effective_mass)
+    fit = fetch.(res)
     nfailures = sum(ismissing.(fit))
     if nfailures > 0
         @info "$nfailures bad bootstrap samples ($(100*nfailures/nboot)%)"
