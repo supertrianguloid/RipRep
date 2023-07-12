@@ -75,6 +75,8 @@ function process_ensemble(line, ensemble_data)
                     therm = 1000
                 elseif ens.global_metadata[:nconfs] > 500
                     therm = 400
+                else
+                    therm = 1
                 end
             end
             measurements = ens
