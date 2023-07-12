@@ -28,6 +28,23 @@ ensure_directory_exists(OUTPUT_DIRECTORY)
 
 list_of_ensembles = YAML.load_file(ARGS[1])
 
+function get_key_or_nothing(dict, key)
+    try
+	return dict[key]
+    catch
+        return nothing
+    end
+end
+
+function get_binsize(dict, key)
+    bs = get_key_or_nothing(dict, key)
+    if bs == nothing
+        return DEFAULT_BINSIZE
+    end
+    return bs
+end
+        
+
 function process_ensemble(line, ensemble_data)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
     ensure_directory_exists(ensemble_path)
@@ -41,44 +58,43 @@ function process_ensemble(line, ensemble_data)
         end
         save_figure(name) = savefig(ensemble_path * name)
 
-        ens = nothing
-        
-        if ensemble_data != nothing && "measurements_only" in keys(ensemble_data)
-            ens = load_measurements(line, β = ensemble_data["β"], csw = ensemble_data["csw"])
-        else
-            ens = load_ensemble(line)
-        end
+        ens = load_ensemble(line)
+        meas = nothing
+
         analysis = deepcopy(ens.global_metadata)
         contains_nans = ens.global_metadata[:nan_confs] != []
-        therm = nothing
-        try
-	   therm = ensemble_data["therm"]
-        catch
+        
+        if ensemble_data != nothing && "measurements" in keys(ensemble_data)
+            meas = load_measurements(ensemble_data["measurements"], β = ens.global_metadata[:β], csw = ens.global_metadata[:csw])
+            contains_nans = false
         end
-        custom_bs = nothing
-        try
-	   custom_bs = ensemble_data["binsize"]
-        catch
-        end
-        bs = DEFAULT_BINSIZE
-        if custom_bs != nothing
-            bs = custom_bs
-        end
+	therm = get_key_or_nothing(ensemble_data, "therm")
         if !contains_nans
-            if therm != nothing
-                thermalise!(ens, therm)
-            elseif ens.global_metadata[:nconfs] > 1100
-                thermalise!(ens, 1000)
-            elseif ens.global_metadata[:nconfs] > 500
-                thermalise!(ens, 400)
+            if therm == nothing
+                if ens.global_metadata[:nconfs] > 1100
+                    therm = 1000
+                elseif ens.global_metadata[:nconfs] > 500
+                    therm = 400
             end
-            analysis[:binsize] = bs
+            if meas != nothing
+                thermalise!(meas, therm)
+            end
+
+            thermalise!(ens, therm)
+                
             analysis[:therm] = first(ens.analysis).confno
             corrs = [:g5_folded, :gk_folded, :id_folded]
             T = ens.global_metadata[:geometry][0]
             L = ens.global_metadata[:geometry][1]
             T_middle = T ÷ 2
-            fit_window = (T_middle - NO_FIT_POINTS):T_middle
+            DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):T_middle
+            function get_fit_window(dict, key)
+                fit_window = get_key_or_nothing(dict, key)
+                if bs == nothing
+                    return DEFAULT_FIT_WINDOW
+                end
+                return fit_window
+            end
             try
                 @info "Plotting plaquette..."
                 plot_plaquette(ens)
@@ -89,6 +105,8 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "PCAC mass..."
+                bs = get_binsize(ensemble_data, "pcac_binsize")
+                fit_window = get_fit_window(ensemble_data, "pcac_fitwindow")
                 analysis[:pcac] = bootstrap_effective_pcac(ens.analysis, bs)
                 plot_pcac_mass(ens, bs)
                 save_figure("pcac_mass.pdf")
@@ -101,6 +119,8 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Fps..."
+                bs = get_binsize(ensemble_data, "fps_binsize")
+                fit_window = get_fit_window(ensemble_data, "fps_fitwindow")
                 analysis[:effective_fps] = bootstrap_effective_fps(ens.analysis, T, L, bs)
                 plot_fps(ens, bs)
                 save_figure("fps.pdf")
@@ -113,6 +133,8 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Gps..."
+                bs = get_binsize(ensemble_data, "gps_binsize")
+                fit_window = get_fit_window(ensemble_data, "gps_fitwindow")
                 analysis[:effective_gps] = bootstrap_effective_gps(ens.analysis, ens.global_metadata[:geometry][1], bs)
                 plot_gps(ens, bs)
                 save_figure("gps.pdf")
@@ -126,6 +148,8 @@ function process_ensemble(line, ensemble_data)
             for corr in corrs
                 try
                     @info String(corr) * "..."
+                    bs = get_binsize(ensemble_data, String(corr)*"_binsize")
+                    fit_window = get_fit_window(ensemble_data, String(corr)*"_fitwindow")
                     analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(ens.analysis, corr, bs)
                     plot_effective_mass(ens, corr, bs)
                     save_figure("effective_mass_" * String(corr) * ".pdf")
@@ -183,7 +207,8 @@ function process_ensemble(line, ensemble_data)
                 end
                 try
                     @info "Calculating w0..."
-                    w0 = auto_w0(wf)
+                    bs = get_binsize(ensemble_data, "w_binsize")
+                    w0 = auto_w0(wf, binsize = bs)
                     analysis[:w0] = w0
                 catch e
                     @error "Failed!"
