@@ -118,6 +118,11 @@ function process_ensemble(line, ensemble_data)
                 analysis[:m_pcac] = fit_pcac_mass(measurements, bs, fit_window)
                 plot_pcac_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("pcac_mass_fit.pdf")
+                tune_bins = get_key_or_nothing(ensemble_data, "pcac_tune_bins")
+                if tune_bins != nothing
+                    tune_binsize_pcac_fit(measurements, tune_bins, fit_window)
+                    save_figure("pcac_mass_autocorrelations.pdf")
+                end
             catch e
                 @error "Failed!"
                 @error e
@@ -132,6 +137,11 @@ function process_ensemble(line, ensemble_data)
                 analysis[:fps] = fit_fps(measurements, bs, fit_window)
                 plot_fps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("fps_fit.pdf")
+                tune_bins = get_key_or_nothing(ensemble_data, "fps_tune_bins")
+                if tune_bins != nothing
+                    tune_binsize_fps_fit(measurements, tune_bins, fit_window)
+                    save_figure("fps_autocorrelations.pdf")
+                end
             catch e
                 @error "Failed!"
                 @error e
@@ -146,6 +156,11 @@ function process_ensemble(line, ensemble_data)
                 analysis[:gps] = fit_gps(measurements, bs, fit_window)
                 plot_gps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("gps_fit.pdf")
+                tune_bins = get_key_or_nothing(ensemble_data, "gps_tune_bins")
+                if tune_bins != nothing
+                    tune_binsize_gps_fit(measurements, tune_bins, fit_window)
+                    save_figure("gps_autocorrelations.pdf")
+                end
             catch e
                 @error "Failed!"
                 @error e
@@ -161,6 +176,11 @@ function process_ensemble(line, ensemble_data)
                     analysis[corr] = fit_effective_mass(measurements, corr, bs, fit_window)
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
+                    tune_bins = get_key_or_nothing(ensemble_data, String(corr)*"_tune_bins")
+                    if tune_bins != nothing
+                        tune_effective_mass_fit(measurements, tune_bins, fit_window)
+                        save_figure(String(corr)*"_autocorrelations.pdf")
+                    end
                 catch e
                     @error "Failed!"
                     @error e
