@@ -1,4 +1,3 @@
-using Plots: error_zipit
 using Plots
 using Statistics
 using Roots
@@ -68,9 +67,9 @@ function bootstrap_effective_pcac_distribution(df::DataFrame, binsize; binmethod
     return pcac
 end
 
-function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+function fit_pcac_mass(analysis::DataFrame, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn   try
-                        subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+                        subsample = get_subsample(analysis, binsize, method=binmethod)
                         μ, σ = bootstrap_effective_pcac(subsample, 1, binmethod=binmethod, nboot=nboot)
                         only(fit_const(fitting_range, μ, σ).param)
                     catch error
@@ -86,6 +85,25 @@ function fit_pcac_mass(ens, binsize, fitting_range; binmethod = :randomsample, n
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
+end
+function fit_pcac_mass(ens::Ensemble, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    return fit_pcac_mass(ens.analysis, binsize, fitting_range, binmethod = binmethod, nboot = nboot)
+end
+
+function tune_binsize_pcac_fit(ens, binsizes, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    L = last(ens.global_metadata[:geometry])
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(ens.analysis, bs)
+            push!(fit_error, fit_pcac_mass(subsample, 1, fitting_range, binmethod = binmethod, nboot = nboot)[2])
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
 function effective_mass(correlator, T)
@@ -126,10 +144,9 @@ function bootstrap_effective_gps(df::DataFrame, L, binsize; binmethod = :randoms
     return [mean(gps), std(gps)]
 end
 
-function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
-    L = last(ens.global_metadata[:geometry])
+function fit_gps(analysis::DataFrame, L, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn try
-                subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+                subsample = get_subsample(analysis, binsize, method=binmethod)
                 μ, σ = bootstrap_effective_gps(subsample, L, 1, binmethod=binmethod, nboot=nboot)
                 only(fit_const(fitting_range, μ, σ).param)
            catch e
@@ -144,6 +161,27 @@ function fit_gps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
+end
+
+function fit_gps(ens::Ensemble, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    L = last(ens.global_metadata[:geometry])
+    return fit_gps(ens.analysis, L, binsize, fitting_range, binmethod = binmethod, nboot = nboot)
+end
+
+function tune_binsize_gps_fit(ens, binsizes, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    L = last(ens.global_metadata[:geometry])
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(ens.analysis, bs)
+            push!(fit_error, fit_gps(subsample, L, 1, fitting_range, binmethod = binmethod, nboot = nboot)[2])
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
 function effective_fps(df::DataFrame, T, L)
@@ -169,11 +207,14 @@ function bootstrap_effective_fps(df::DataFrame, T, L, binsize; binmethod = :rand
     return [mean(fps), std(fps)]
 end
 
-function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+function fit_fps(ens::Ensemble, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     L = last(ens.global_metadata[:geometry])
     T = first(ens.global_metadata[:geometry])
+    return fit_fps(ens.analysis, L, T, binsize, fitting_range, binmethod = binmethod, nboot = nboot)
+end
+function fit_fps(analysis::DataFrame, L, T, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn try
-                    subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+                    subsample = get_subsample(analysis, binsize, method=binmethod)
                     μ, σ = bootstrap_effective_fps(subsample, T, L, 1, binmethod=binmethod, nboot=nboot)
                     only(fit_const(fitting_range, μ, σ).param)
            catch e
@@ -188,6 +229,23 @@ function fit_fps(ens, binsize, fitting_range; binmethod = :randomsample, nboot =
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
+end
+
+function tune_binsize_fps_fit(ens, binsizes, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    L = last(ens.global_metadata[:geometry])
+    T = first(ens.global_metadata[:geometry])
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(ens.analysis, bs)
+            push!(fit_error, fit_fps(subsample, L, T, 1, fitting_range, binmethod = binmethod, nboot = nboot)[2])
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
 function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
@@ -243,9 +301,9 @@ function bootstrap_effective_mass_ratio(df::DataFrame, corr_numerator, corr_deno
     return [μ, σ]
 end
 
-function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+function fit_effective_mass(analysis::DataFrame, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn try
-                      subsample = get_subsample(ens.analysis, binsize, method=binmethod)
+                      subsample = get_subsample(analysis, binsize, method=binmethod)
                       μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot)
                       only(fit_const(fitting_range, μ, σ).param)
            catch e
@@ -260,6 +318,25 @@ function fit_effective_mass(ens, corr, binsize, fitting_range; binmethod = :rand
     μ = mean(fit)
     σ = std(fit)
     return [μ, σ]
+end
+
+function fit_effective_mass(ens::Ensemble, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    return fit_effective_mass(ens.analysis, corr, binsize, fitting_range, binmethod = binmethod, nboot = nboot)
+end
+
+function tune_effective_mass_fit(ens, corr, binsizes, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(ens.analysis, bs)
+            push!(fit_error, fit_effective_mass(subsample, corr, 1, fitting_range, binmethod = binmethod, nboot = nboot)[2])
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
 function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
