@@ -9,7 +9,7 @@ include("parser.jl")
 include("utilities.jl")
 
 TITLE_FONT_SIZE = 13
-NBOOT_DEFAULT = 50
+NBOOT_DEFAULT = 20
 
 function plot_plaquette(ens; range = :default, _bang = false)
     if range == :default
