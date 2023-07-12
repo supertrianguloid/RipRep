@@ -19,6 +19,7 @@ ENV["GKSwstype"]="nul"
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
 DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
+DEFAULT_TUNE_BINSIZES = collect(1:6:100)
 
 WF_REF = 1.0
 
@@ -36,12 +37,12 @@ function get_key_or_nothing(dict, key)
     end
 end
 
-function get_binsize(dict, key)
+function get_binsize_tune(dict, key)
     bs = get_key_or_nothing(dict, key)
     if bs == nothing
-        return DEFAULT_BINSIZE
+        return DEFAULT_BINSIZE, true
     end
-    return bs
+    return bs, false
 end
         
 
@@ -110,7 +111,7 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "PCAC mass..."
-                bs = get_binsize(ensemble_data, "pcac_binsize")
+                bs, tune = get_binsize_tune(ensemble_data, "pcac_binsize")
                 fit_window = get_fit_window(ensemble_data, "pcac_fitwindow")
                 analysis[:pcac] = bootstrap_effective_pcac(measurements.analysis, bs)
                 plot_pcac_mass(measurements, bs)
@@ -118,9 +119,8 @@ function process_ensemble(line, ensemble_data)
                 analysis[:m_pcac] = fit_pcac_mass(measurements, bs, fit_window)
                 plot_pcac_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("pcac_mass_fit.pdf")
-                tune_bins = get_key_or_nothing(ensemble_data, "pcac_tune_bins")
-                if tune_bins != nothing
-                    tune_binsize_pcac_fit(measurements, tune_bins, fit_window)
+                if tune
+                    tune_binsize_pcac_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
                     save_figure("pcac_mass_autocorrelations.pdf")
                 end
             catch e
@@ -129,7 +129,7 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Fps..."
-                bs = get_binsize(ensemble_data, "fps_binsize")
+                bs, tune = get_binsize_tune(ensemble_data, "fps_binsize")
                 fit_window = get_fit_window(ensemble_data, "fps_fitwindow")
                 analysis[:effective_fps] = bootstrap_effective_fps(measurements.analysis, T, L, bs)
                 plot_fps(measurements, bs)
@@ -137,9 +137,8 @@ function process_ensemble(line, ensemble_data)
                 analysis[:fps] = fit_fps(measurements, bs, fit_window)
                 plot_fps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("fps_fit.pdf")
-                tune_bins = get_key_or_nothing(ensemble_data, "fps_tune_bins")
-                if tune_bins != nothing
-                    tune_binsize_fps_fit(measurements, tune_bins, fit_window)
+                if tune
+                    tune_binsize_fps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
                     save_figure("fps_autocorrelations.pdf")
                 end
             catch e
@@ -148,7 +147,7 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Gps..."
-                bs = get_binsize(ensemble_data, "gps_binsize")
+                bs, tune = get_binsize_tune(ensemble_data, "gps_binsize")
                 fit_window = get_fit_window(ensemble_data, "gps_fitwindow")
                 analysis[:effective_gps] = bootstrap_effective_gps(measurements.analysis, ens.global_metadata[:geometry][1], bs)
                 plot_gps(measurements, bs)
@@ -156,9 +155,8 @@ function process_ensemble(line, ensemble_data)
                 analysis[:gps] = fit_gps(measurements, bs, fit_window)
                 plot_gps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("gps_fit.pdf")
-                tune_bins = get_key_or_nothing(ensemble_data, "gps_tune_bins")
-                if tune_bins != nothing
-                    tune_binsize_gps_fit(measurements, tune_bins, fit_window)
+                if tune
+                    tune_binsize_gps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
                     save_figure("gps_autocorrelations.pdf")
                 end
             catch e
@@ -168,7 +166,7 @@ function process_ensemble(line, ensemble_data)
             for corr in corrs
                 try
                     @info String(corr) * "..."
-                    bs = get_binsize(ensemble_data, String(corr)*"_binsize")
+                    bs, tune = get_binsize_tune(ensemble_data, String(corr)*"_binsize")
                     fit_window = get_fit_window(ensemble_data, String(corr)*"_fitwindow")
                     analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(measurements.analysis, corr, bs)
                     plot_effective_mass(measurements, corr, bs)
@@ -176,9 +174,8 @@ function process_ensemble(line, ensemble_data)
                     analysis[corr] = fit_effective_mass(measurements, corr, bs, fit_window)
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
-                    tune_bins = get_key_or_nothing(ensemble_data, String(corr)*"_tune_bins")
-                    if tune_bins != nothing
-                        tune_effective_mass_fit(measurements, tune_bins, fit_window)
+                    if tune
+                        tune_effective_mass_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
                         save_figure(String(corr)*"_autocorrelations.pdf")
                     end
                 catch e
