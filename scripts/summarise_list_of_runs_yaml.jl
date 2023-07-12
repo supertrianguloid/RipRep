@@ -75,6 +75,7 @@ function process_ensemble(line, ensemble_data)
                     therm = 1000
                 elseif ens.global_metadata[:nconfs] > 500
                     therm = 400
+                end
             end
             if meas != nothing
                 thermalise!(meas, therm)
