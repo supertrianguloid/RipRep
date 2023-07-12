@@ -93,7 +93,7 @@ function process_ensemble(line, ensemble_data)
             DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):T_middle
             function get_fit_window(dict, key)
                 fit_window = get_key_or_nothing(dict, key)
-                if bs == nothing
+                if fit_window == nothing
                     return DEFAULT_FIT_WINDOW
                 end
                 return fit_window
