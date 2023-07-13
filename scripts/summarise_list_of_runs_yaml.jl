@@ -19,6 +19,7 @@ OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm
 DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
 DEFAULT_TUNE_BINSIZES = collect(1:6:80)
+INCLUDE_PREAMBLE = true
 
 WF_REF = 1.0
 
@@ -60,6 +61,14 @@ function process_ensemble(line, ensemble_data)
         end
         function save_figure(name)
             savefig(ensemble_path * name * ".tex")
+
+            if(INCLUDE_PREAMBLE)
+                s = read(open(ensemble_path * name * ".tex"), String)
+                open(ensemble_path * name * ".tex", "w") do f
+                    write(f, Plots.pgfx_preamble() * "\n" * s)
+                end
+            end
+            
         end
             
 
