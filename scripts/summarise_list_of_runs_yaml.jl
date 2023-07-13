@@ -63,7 +63,7 @@ function process_ensemble(line, ensemble_data)
 
             s = read(open(ensemble_path * name * ".tikz"), String)
             open(ensemble_path * name * ".tex", "w") do f
-                write(f, Plots.pgfx_preamble() * "\n" * s)
+                write(f, Plots.pgfx_preamble() * "\n \\document{begin} \n " * s * "\n \\document{end} \n")
             end
             
         end
