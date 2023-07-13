@@ -4,6 +4,9 @@ function thermalise!(data_struct, thermsize; method = :equal)
     data_struct.analysis = data_struct.data[thermsize:end,:]
 end
 
+
+# TODO: Fix this to stop offsetting the beginning. Don't need this anymore
+
 function get_subsample(df::DataFrame, binsize; method = :randomsample)
     offset = nrow(df) % binsize + 1
     subsample = df[offset:end, :]
