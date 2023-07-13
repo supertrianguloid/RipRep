@@ -1,6 +1,9 @@
 using Base: nothing_sentinel, full_va_len
 using Plots
 using LsqFit
+using Base.Threads: @spawn
+
+NBOOT_DEFAULT = 20
 
 include("parser.jl")
 include("utilities.jl")
