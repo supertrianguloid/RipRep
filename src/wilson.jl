@@ -1,4 +1,4 @@
-using Base: nothing_sentinel
+using Base: nothing_sentinel, full_va_len
 using Plots
 using LsqFit
 
@@ -17,7 +17,7 @@ function plot_w(wf, range = :all; binsize = 1, nboot = 1000, _bang = false, titl
         data = data[:, :W]
     end
 
-    index = _wf_time_to_index_w(wf, range[1]):_wf_time_to_index_w(wf, range[end])
+    index = _wf_time_to_index_w(wf.analysis, range[1]):_wf_time_to_index_w(wf.analysis, range[end])
     plot_func(index.*wf.metadata[:dt], mean(data)[index], yerr = standard_error(data, binsize=binsize, nboot=nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$W(t)\$")
@@ -52,23 +52,23 @@ function plot_t2e(wf, range = :all; binsize = 1, nboot=1000, title="")
     if range == :all
         range = data[1, :t]
     end
-    index = _wf_time_to_index(wf, range[1]):_wf_time_to_index(wf, range[end])
+    index = _wf_time_to_index(wf.analysis, range[1]):_wf_time_to_index(wf.analysis, range[end])
     plot((index .- 1).*wf.metadata[:dt], mean(data[:, :t2E])[index], yerr = standard_error(data[:, :t2E], binsize=binsize, nboot=nboot)[index], title=title, legend=false)
     xlabel!("\$t\$")
     ylabel!("\$t^2E(t)\$")
 end
 
-function _wf_time_to_index(wf::WilsonFlow, time)
-    return only(findall(wf.analysis.t[1] .≈ time))
+function _wf_time_to_index(analysis::DataFrame, time)
+    return only(findall(analysis.t[1] .≈ time))
 end
 
-function _wf_time_to_index_w(wf::WilsonFlow, time)
-    return only(findall(wf.analysis.t[1] .≈ time)) - 1
+function _wf_time_to_index_w(analysis::DataFrame, time)
+    return only(findall(analysis.t[1] .≈ time)) - 1
 end
 
-function _find_t0(wf, data, window, dt; nboot = 100, ref = 1.0)
-    n1 = _wf_time_to_index(wf, window[1])
-    n2 = _wf_time_to_index(wf, window[2])
+function _find_t0(analysis::DataFrame, data, window, dt; nboot = 100, ref = 1.0)
+    n1 = _wf_time_to_index(analysis, window[1])
+    n2 = _wf_time_to_index(analysis, window[2])
     res = [@spawn begin
                     s = rand(1:nrow(data), nrow(data))
                     σ² = var(data[s, :t2E])
@@ -108,11 +108,11 @@ function _find_w0(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = tru
     return [sqrt(w[1]), w[2]/(2*sqrt(w[1]))]
 end
 
-function _find_w0_fullbootstrap(wf, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
-    n1 = _wf_time_to_index_w(wf, window[1])
-    n2 = _wf_time_to_index_w(wf, window[2])
+function _find_w0_fullbootstrap(analysis::DataFrame, window, dt; binsize = 1, nboot = 100, ref = 1.0, sym = true)
+    n1 = _wf_time_to_index_w(analysis, window[1])
+    n2 = _wf_time_to_index_w(analysis, window[2])
     res = [@spawn begin
-                    sample = get_subsample(wf.analysis, binsize)
+                    sample = get_subsample(analysis, binsize)
                     if(sym)
                         σ² = var(sample[:, :Wsym])
                         mu = mean(sample[:, :Wsym])
@@ -129,56 +129,24 @@ function _find_w0_fullbootstrap(wf, window, dt; binsize = 1, nboot = 100, ref = 
     return [mean(w), std(w)]
 end
 
-function find_w0(wf, window; binsize = 1, nboot = 100, ref = 1.0, sym = true, fullbootstrap = true)
+function find_w0(analysis::DataFrame, dt, window; binsize = 1, nboot = 100, ref = 1.0, sym = true, fullbootstrap = true)
     if(fullbootstrap)
-        return _find_w0_fullbootstrap(wf, window, wf.metadata[:dt], binsize = binsize, nboot = nboot, ref = ref, sym = sym)
+        return _find_w0_fullbootstrap(analysis, window, dt, binsize = binsize, nboot = nboot, ref = ref, sym = sym)
     else
-        return _find_w0(wf, window, wf.metadata[:dt], binsize = binsize, nboot = nboot, ref = ref, sym = sym)
+        return _find_w0(analysis, window, dt, binsize = binsize, nboot = nboot, ref = ref, sym = sym)
     end
+end
+
+function find_w0(wf::WilsonFlow, window; binsize = 1, nboot = 100, ref = 1.0, sym = true, fullbootstrap = true)
+    return find_w0(wf.analysis, wf.metadata[:dt], window, binsize=binsize, nboot=nboot, ref=ref, sym=sym, fullbootstrap=fullbootstrap)
 end
 
 function find_t0(wf, window; nboot = 100, ref = 1.0)
     return _find_t0(wf, wf.analysis, window, wf.metadata[:dt], nboot = nboot, ref = ref)
 end
 
-function error_on_error_w0(wf, window; nboot = 100, ref = 1.0)
-    res = [@spawn _find_w0(wf, wf.analysis[rand(1:nrow(wf.analysis), nrow(wf.analysis)), :], window, wf.metadata[:dt], nboot=nboot, ref=ref) for i in 1:nboot]
-    w0 = fetch.(res)
-    
-    w0 = collect.(w0)
-    return hcat(mean(w0)..., std(w0)...)
-end
+function tune_binsize_w0(wf, binsizes, eitherside = 2, nboot = NBOOT_DEFAULT, sym = true, fullboostrap = true)
 
-function error_on_error_t0(wf, window; nboot = 100, ref = 1.0)
-    t0 = []
-    for i in 1:nboot
-        push!(t0, _find_t0(wf, wf.analysis[rand(1:nrow(wf.analysis), nrow(wf.analysis)), :], window, wf.metadata.dt, nboot=nboot, ref=ref))
-    end
-    t0 = collect.(t0)
-    return hcat(mean(t0)..., std(t0)...)
-end
-
-function wf_plot_error_on_error(wf, window, binrange, type; nboot = 100, ref = 1.0, method = :equal)
-    if type == :w0
-        l1, l2 = mean(wf.data[:, :W])[[_wf_time_to_index_w(wf, window[1]), _wf_time_to_index_w(wf, window[2])]]
-    elseif type == :t0
-        l1, l2 = mean(wf.data[:, :t²E])[[_wf_time_to_index(wf, window[1]), _wf_time_to_index(wf, window[2])]]
-    end
-    if l1 > ref || l2 < ref
-        @error "Wrong bounds" * string(window)
-        return
-    end
-    res = []
-    for i in binrange
-        thermalise_bin!(wf, 1, i, method = method)
-        if type == :w0
-            push!(res, error_on_error_w0(wf, window, nboot = nboot, ref = ref))
-        elseif type == :t0
-            push!(res, error_on_error_t0(wf, window, nboot = nboot, ref = ref))
-        end
-    end
-    res = vcat(res...)
-    plot(binrange, res[:,3], yerr = res[:,4])
 end
 
 function reference_time(yref, c, cvar, m, mvar, cov = 0)
@@ -189,21 +157,26 @@ function reference_time(yref, c, cvar, m, mvar, cov = 0)
     )
 end
 
-function auto_w0(wf; binsize = 1, eitherside = 2, nboot = 100, ref = 1, sym=true, fullbootstrap=true)
+function auto_w0(analysis::DataFrame, dt; binsize = 1, eitherside = 2, nboot = 100, ref = 1, sym=true, fullbootstrap=true)
     if(sym)
-        data = wf.analysis.Wsym
+        data = analysis.Wsym
     else
-        data = wf.analysis.W
+        data = analysis.W
     end
     rightpoint = findfirst(>(ref), mean(data))
     window = 0
     try
         fitrange = (rightpoint-eitherside):((rightpoint - 1) + eitherside)
         a = mean(data)[fitrange]
-        window = wf.analysis.t[1][fitrange]
+        window = analysis.t[1][fitrange]
     catch e
         @error "W never reaches the reference value." ref
         return nothing
     end
-    return find_w0(wf, window, binsize = binsize, nboot = nboot, ref = ref, sym = sym, fullbootstrap = fullbootstrap)
+    return find_w0(analysis, dt, window, binsize = binsize, nboot = nboot, ref = ref, sym = sym, fullbootstrap = fullbootstrap)
 end
+
+function auto_w0(wf::WilsonFlow; binsize = 1, eitherside = 2, nboot = NBOOT_DEFAULT, ref = 1, sym=true, fullbootstrap=true)
+    return auto_w0(wf.analysis, wf.metadata[:dt], binsize = binsize, eitherside = eitherside, nboot = nboot, ref = ref, sym=sym, fullbootstrap=fullbootstrap)
+end
+    
