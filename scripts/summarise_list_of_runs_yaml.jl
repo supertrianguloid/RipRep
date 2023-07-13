@@ -59,7 +59,6 @@ function process_ensemble(line, ensemble_data)
         catch e
         end
         function save_figure(name)
-            savefig(ensemble_path * name * ".pdf")
             savefig(ensemble_path * name * ".tex")
         end
             
