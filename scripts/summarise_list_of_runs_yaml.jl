@@ -28,6 +28,8 @@ ensure_directory_exists(OUTPUT_DIRECTORY)
 
 list_of_ensembles = YAML.load_file(ARGS[1])
 
+pgfplotsx()
+
 function get_key_or_nothing(dict, key)
     try
 	return dict[key]
