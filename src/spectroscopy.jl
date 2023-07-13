@@ -4,6 +4,7 @@ using Roots
 using LsqFit
 using DataFrames
 using Base.Threads: @spawn
+using LaTeXStrings
 
 include("parser.jl")
 include("utilities.jl")
