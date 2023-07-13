@@ -431,3 +431,43 @@ function plot_fps_fit(ens, binsize, fitting_range, plotting_range; binmethod = :
     plot_fps(ens, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
 end
+
+function plot_dS(ens)
+    plot(ens.analysis.dS, title = L"$dS$ History", xlabel = "Configuration")
+end
+
+function plot_maxeig(ens)
+    if length(Set(ens.analysis.maxeig)) == 1
+        @error "No MaxEig data."
+    else
+        plot(ens.analysis.maxeig, title = "Maximum Eigenvalue", xlabel = "Configuration")
+    end
+end
+
+function plot_mineig(ens)
+    if length(Set(ens.analysis.mineig)) == 1
+        @error "No MinEig data."
+    else
+        plot(ens.analysis.mineig, title = "Minimum Eigenvalue", xlabel = "Configuration")
+    end
+end
+
+function plot_adjoint_polyakov_hist(ens)
+    data = hcat(ens.analysis.adjoint_polyakov...)
+    histogram([data[i, :] for i in 1:4], layout = 4, plot_title = "Adjoint Polyakov", label = ["0" "1" "2" "3"])
+end
+
+function plot_adjoint_polyakov(ens)
+    data = hcat(ens.analysis.adjoint_polyakov...)
+    plot([data[i, :] for i in 1:4], layout = 4, plot_title = "Adjoint Polyakov", label = ["0" "1" "2" "3"])
+end
+
+function plot_fundamental_polyakov_hist(ens)
+    data = real.(hcat(ens.analysis.fundamental_polyakov...))
+    histogram([data[i, :] for i in 1:4], layout = 4, plot_title = "Fundamental Polyakov (Real Part)", label = ["0" "1" "2" "3"])
+end
+
+function plot_fundamental_polyakov(ens)
+    data = real.(hcat(ens.analysis.fundamental_polyakov...))
+    plot([data[i, :] for i in 1:4], layout = 4, plot_title = "Fundamental Polyakov (Real Part)", label = ["0" "1" "2" "3"])
+end

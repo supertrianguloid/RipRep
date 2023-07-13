@@ -120,6 +120,54 @@ function process_ensemble(line, ensemble_data)
                 @error e
             end
             try
+                @info "Plotting fundamental Polyakov..."
+                plot_fundamental_polyakov(ens)
+                save_figure("fundamental_polyakov")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
+                @info "Plotting fundamental Polyakov Histogram..."
+                plot_fundamental_polyakov_hist(ens)
+                save_figure("fundamental_polyakov_hist")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
+                @info "Plotting adjoint Polyakov..."
+                plot_adjoint_polyakov(ens)
+                save_figure("adjoint_polyakov")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
+                @info "Plotting adjoint Polyakov Histogram..."
+                plot_adjoint_polyakov_hist(ens)
+                save_figure("adjoint_polyakov_hist")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
+                @info "Plotting maximum eigenvalue..."
+                plot_maxeig(ens)
+                save_figure("maxeig")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
+                @info "Plotting minimum eigenvalue..."
+                plot_mineig(ens)
+                save_figure("mineig")
+            catch e
+                @error "Failed!"
+                @error e
+            end
+            try
                 @info "PCAC mass..."
                 bs, tune = get_binsize_tune(ensemble_data, "pcac_binsize")
                 fit_window = get_fit_window(ensemble_data, "pcac_fitwindow")
