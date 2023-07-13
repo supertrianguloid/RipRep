@@ -19,7 +19,7 @@ ENV["GKSwstype"]="nul"
 OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
 DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
-DEFAULT_TUNE_BINSIZES = collect(1:6:100)
+DEFAULT_TUNE_BINSIZES = collect(1:6:200)
 
 WF_REF = 1.0
 
