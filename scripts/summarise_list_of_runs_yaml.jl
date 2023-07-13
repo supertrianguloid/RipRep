@@ -175,7 +175,7 @@ function process_ensemble(line, ensemble_data)
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit.pdf")
                     if tune
-                        tune_effective_mass_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
+                        tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window)
                         save_figure(String(corr)*"_autocorrelations.pdf")
                     end
                 catch e
