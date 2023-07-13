@@ -1,4 +1,3 @@
-using Base: nothing_sentinel
 #!julia
 using YAML
 using Dates
@@ -57,7 +56,11 @@ function process_ensemble(line, ensemble_data)
             @info "Successfully loaded Wilson flow data"
         catch e
         end
-        save_figure(name) = savefig(ensemble_path * name)
+        function save_figure(name)
+            savefig(ensemble_path * name * ".pdf")
+            savefig(ensemble_path * name * ".tex")
+        end
+            
 
         ens = load_ensemble(line)
         meas = nothing
@@ -104,7 +107,7 @@ function process_ensemble(line, ensemble_data)
             try
                 @info "Plotting plaquette..."
                 plot_plaquette(ens)
-                save_figure("plaquette.pdf")
+                save_figure("plaquette")
             catch e
                 @error "Failed!"
                 @error e
@@ -115,13 +118,13 @@ function process_ensemble(line, ensemble_data)
                 fit_window = get_fit_window(ensemble_data, "pcac_fitwindow")
                 analysis[:pcac] = bootstrap_effective_pcac(measurements.analysis, bs)
                 plot_pcac_mass(measurements, bs)
-                save_figure("pcac_mass.pdf")
+                save_figure("pcac_mass")
                 analysis[:m_pcac] = fit_pcac_mass(measurements, bs, fit_window)
                 plot_pcac_fit(measurements, bs, fit_window, 1:T_middle)
-                save_figure("pcac_mass_fit.pdf")
+                save_figure("pcac_mass_fit")
                 if tune
                     tune_binsize_pcac_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
-                    save_figure("pcac_mass_autocorrelations.pdf")
+                    save_figure("pcac_mass_autocorrelations")
                 end
             catch e
                 @error "Failed!"
@@ -133,13 +136,13 @@ function process_ensemble(line, ensemble_data)
                 fit_window = get_fit_window(ensemble_data, "fps_fitwindow")
                 analysis[:effective_fps] = bootstrap_effective_fps(measurements.analysis, T, L, bs)
                 plot_fps(measurements, bs)
-                save_figure("fps.pdf")
+                save_figure("fps")
                 analysis[:fps] = fit_fps(measurements, bs, fit_window)
                 plot_fps_fit(measurements, bs, fit_window, 1:T_middle)
-                save_figure("fps_fit.pdf")
+                save_figure("fps_fit")
                 if tune
                     tune_binsize_fps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
-                    save_figure("fps_autocorrelations.pdf")
+                    save_figure("fps_autocorrelations")
                 end
             catch e
                 @error "Failed!"
@@ -151,13 +154,13 @@ function process_ensemble(line, ensemble_data)
                 fit_window = get_fit_window(ensemble_data, "gps_fitwindow")
                 analysis[:effective_gps] = bootstrap_effective_gps(measurements.analysis, ens.global_metadata[:geometry][1], bs)
                 plot_gps(measurements, bs)
-                save_figure("gps.pdf")
+                save_figure("gps")
                 analysis[:gps] = fit_gps(measurements, bs, fit_window)
                 plot_gps_fit(measurements, bs, fit_window, 1:T_middle)
-                save_figure("gps_fit.pdf")
+                save_figure("gps_fit")
                 if tune
                     tune_binsize_gps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
-                    save_figure("gps_autocorrelations.pdf")
+                    save_figure("gps_autocorrelations")
                 end
             catch e
                 @error "Failed!"
@@ -170,13 +173,13 @@ function process_ensemble(line, ensemble_data)
                     fit_window = get_fit_window(ensemble_data, String(corr)*"_fitwindow")
                     analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(measurements.analysis, corr, bs)
                     plot_effective_mass(measurements, corr, bs)
-                    save_figure("effective_mass_" * String(corr) * ".pdf")
+                    save_figure("effective_mass_" * String(corr))
                     analysis[corr] = fit_effective_mass(measurements, corr, bs, fit_window)
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
-                    save_figure("effective_mass_" * String(corr) * "_fit.pdf")
+                    save_figure("effective_mass_" * String(corr) * "_fit")
                     if tune
                         tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window)
-                        save_figure(String(corr)*"_autocorrelations.pdf")
+                        save_figure(String(corr)*"_autocorrelations")
                     end
                 catch e
                     @error "Failed!"
@@ -187,7 +190,7 @@ function process_ensemble(line, ensemble_data)
                 @info "mv/mpi..."
                 analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(measurements.analysis, :gk_folded, :g5_folded, bs)
                 plot_effective_mass_ratio(measurements, :gk_folded, :g5_folded, bs)
-                save_figure("effective_ratio_mv_mpi.pdf")
+                save_figure("effective_ratio_mv_mpi")
                 analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
             catch e
                 @error "Failed!"
@@ -198,7 +201,7 @@ function process_ensemble(line, ensemble_data)
                 try
                     @info "t²E..."
                     plot_t2e(wf, binsize = bs)
-                    save_figure("t2e.pdf")
+                    save_figure("t2e")
                 catch e
                     @error "Failed!"
                     @error e
@@ -206,7 +209,7 @@ function process_ensemble(line, ensemble_data)
                 try
                     @info "W..."
                     plot_w(wf, binsize = bs)
-                    save_figure("W.pdf")
+                    save_figure("W")
                 catch e
                     @error "Failed!"
                     @error e
@@ -214,7 +217,7 @@ function process_ensemble(line, ensemble_data)
                 try
                     @info "Topological Charge..."
                     plot_tc(wf)
-                    save_figure("tc.pdf")
+                    save_figure("tc")
                 catch e
                     @error "Failed!"
                     @error e
@@ -222,7 +225,7 @@ function process_ensemble(line, ensemble_data)
                 try
                     @info "Topological Charge Histogram..."
                     plot_tc_hist(wf)
-                    save_figure("tc_hist.pdf")
+                    save_figure("tc_hist")
                 catch e
                     @error "Failed!"
                     @error e
