@@ -188,6 +188,8 @@ function process_ensemble(line, ensemble_data)
                 plot_pcac_mass(measurements, bs)
                 save_figure("pcac_mass")
                 analysis[:m_pcac] = fit_pcac_mass(measurements, bs, fit_window)
+                analysis[:pcac_binsize] = bs
+                analysis[:pcac_fitwindow] = fit_window
                 plot_pcac_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("pcac_mass_fit")
                 if tune
@@ -206,6 +208,8 @@ function process_ensemble(line, ensemble_data)
                 plot_fps(measurements, bs)
                 save_figure("fps")
                 analysis[:fps] = fit_fps(measurements, bs, fit_window)
+                analysis[:fps_binsize] = bs
+                analysis[:fps_fitwindow] = fit_window
                 plot_fps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("fps_fit")
                 if tune
@@ -224,6 +228,8 @@ function process_ensemble(line, ensemble_data)
                 plot_gps(measurements, bs)
                 save_figure("gps")
                 analysis[:gps] = fit_gps(measurements, bs, fit_window)
+                analysis[:gps_binsize] = bs
+                analysis[:gps_fitwindow] = fit_window
                 plot_gps_fit(measurements, bs, fit_window, 1:T_middle)
                 save_figure("gps_fit")
                 if tune
@@ -243,6 +249,8 @@ function process_ensemble(line, ensemble_data)
                     plot_effective_mass(measurements, corr, bs)
                     save_figure("effective_mass_" * String(corr))
                     analysis[corr] = fit_effective_mass(measurements, corr, bs, fit_window)
+                    analysis[Symbol(String(corr) * "_binsize")] = bs
+                    analysis[Symbol(String(corr) * "_fitwindow")] = bs
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
                     save_figure("effective_mass_" * String(corr) * "_fit")
                     if tune
@@ -256,10 +264,14 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "mv/mpi..."
+                bs, tune = get_binsize_tune(ensemble_data, "ratio_mv_mpi_binsize")
+                fit_window = get_fit_window(ensemble_data, "ratio_mv_mpi_fitwindow")
                 analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(measurements.analysis, :gk_folded, :g5_folded, bs)
                 plot_effective_mass_ratio(measurements, :gk_folded, :g5_folded, bs)
                 save_figure("effective_ratio_mv_mpi")
                 analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
+                analysis[:ratio_mv_mpi_binsize] = bs
+                analysis[:ratio_mv_mpi_fitwindow] = bs
             catch e
                 @error "Failed!"
                 @error e
@@ -305,45 +317,11 @@ function process_ensemble(line, ensemble_data)
                     bs, tune = get_binsize_tune(ensemble_data, "w_binsize")
                     w0 = auto_w0(wf, binsize = bs)
                     analysis[:w0] = w0
+                    analysis[:w0_binsize] = bs
                 catch e
                     @error "Failed!"
                     @error e
                 end
-                try
-                    @info "Calculating mpiw0..."
-                    analysis[:mpiw0] = propagate_product(analysis[:w0], analysis[:g5_folded])
-                catch e
-                    @error "Failed!"
-                    @error e
-                end
-                try
-                    @info "Calculating mpiw0..."
-                    analysis[:mpiw02] = propagate_product(analysis[:mpiw0], analysis[:mpiw0])
-                catch e
-                    @error "Failed!"
-                    @error e
-                end
-                try
-                    @info "Calculating mpcacw0..."
-                    analysis[:mpcacw0] = propagate_product(analysis[:w0], analysis[:m_pcac])
-                catch e
-                    @error "Failed!"
-                    @error e
-                end
-            end
-            try
-                @info "Calculating mpi^2..."
-                analysis[:mpi2] = propagate_product(analysis[:g5_folded], analysis[:g5_folded])
-            catch e
-                @error "Failed!"
-                @error e
-            end
-            try
-                @info "Calculating mpiL..."
-                analysis[:mpiL] = analysis[:g5_folded][1]*L
-            catch e
-                @error "Failed!"
-                @error e
             end
         end
         YAML.write_file(ensemble_path * "analysis.yml", analysis)
