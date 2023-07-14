@@ -19,6 +19,7 @@ OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm
 DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
 DEFAULT_TUNE_BINSIZES = collect(1:6:80)
+TIKZ = false
 
 WF_REF = 1.0
 
@@ -28,7 +29,11 @@ ensure_directory_exists(OUTPUT_DIRECTORY)
 
 list_of_ensembles = YAML.load_file(ARGS[1])
 
-pgfplotsx()
+if TIKZ
+    pgfplotsx()
+else
+    gr()
+end
 
 function get_key_or_nothing(dict, key)
     try
@@ -59,11 +64,15 @@ function process_ensemble(line, ensemble_data)
         catch e
         end
         function save_figure(name)
-            savefig(ensemble_path * name * ".tikz")
+            if TIKZ
+                savefig(ensemble_path * name * ".tikz")
 
-            s = read(open(ensemble_path * name * ".tikz"), String)
-            open(ensemble_path * name * ".tex", "w") do f
-                write(f, Plots.pgfx_preamble() * "\n \\begin{document} \n " * s * "\n \\end{document} \n")
+                s = read(open(ensemble_path * name * ".tikz"), String)
+                open(ensemble_path * name * ".tex", "w") do f
+                    write(f, Plots.pgfx_preamble() * "\n \\begin{document} \n " * s * "\n \\end{document} \n")
+                end
+            else
+                savefig(ensemble_path * name * ".pdf")
             end
             
         end
