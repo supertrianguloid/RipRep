@@ -1,4 +1,6 @@
 using Statistics
+using DataFrames
+using YAML
 
 function thermalise!(data_struct, thermsize; method = :equal)
     data_struct.analysis = data_struct.data[thermsize:end,:]
@@ -183,4 +185,24 @@ function ensure_directory_exists(path)
         mkpath(path)
     catch e
     end
+end
+
+function load_yaml_as_dataframe(file)
+    dicts  = YAML.load_file(file)
+    s = Set()
+    for key in keys(dicts)
+        s = union(s, Set(keys(dicts[key])))
+    end
+    df = DataFrame()
+    for key in keys(dicts)
+        row = Dict()
+        for i in s
+            row[i] = missing
+        end
+        for innerkey in keys(dicts[key])
+            row[innerkey] = dicts[key][innerkey]
+        end
+        push!(df, row, cols = :union)
+    end
+    return df
 end

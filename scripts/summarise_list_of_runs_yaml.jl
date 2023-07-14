@@ -162,16 +162,20 @@ function process_ensemble(line, ensemble_data)
             end
             try
                 @info "Plotting maximum eigenvalue..."
-                plot_maxeig(ens)
-                save_figure("maxeig")
+                res = plot_maxeig(ens)
+                if res != nothing
+                    save_figure("maxeig")
+                end
             catch e
                 @error "Failed!"
                 @error e
             end
             try
                 @info "Plotting minimum eigenvalue..."
-                plot_mineig(ens)
-                save_figure("mineig")
+                res = plot_mineig(ens)
+                if res != nothing
+                    save_figure("mineig")
+                end
             catch e
                 @error "Failed!"
                 @error e

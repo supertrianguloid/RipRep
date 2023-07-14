@@ -440,6 +440,7 @@ end
 function plot_maxeig(ens)
     if length(Set(ens.analysis.maxeig)) == 1
         @error "No MaxEig data."
+        return nothing
     else
         plot(ens.analysis.maxeig, title = "Maximum Eigenvalue", xlabel = "Configuration")
     end
@@ -448,6 +449,7 @@ end
 function plot_mineig(ens)
     if length(Set(ens.analysis.mineig)) == 1
         @error "No MinEig data."
+        return nothing
     else
         plot(ens.analysis.mineig, title = "Minimum Eigenvalue", xlabel = "Configuration")
     end
