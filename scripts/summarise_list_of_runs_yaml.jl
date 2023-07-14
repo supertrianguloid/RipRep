@@ -289,7 +289,7 @@ function process_ensemble(line, ensemble_data)
                 end
                 try
                     @info "Calculating w0..."
-                    bs, tune = get_binsize(ensemble_data, "w_binsize")
+                    bs, tune = get_binsize_tune(ensemble_data, "w_binsize")
                     w0 = auto_w0(wf, binsize = bs)
                     analysis[:w0] = w0
                 catch e
