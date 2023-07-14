@@ -438,20 +438,22 @@ function plot_dS(ens)
 end
 
 function plot_maxeig(ens)
+    range = ens.analysis[:, :confno]
     if length(Set(ens.analysis.maxeig)) == 1
         @error "No MaxEig data."
         return nothing
     else
-        plot(ens.analysis.maxeig, title = "Maximum Eigenvalue", xlabel = "Configuration")
+        plot(range, ens.analysis.maxeig, title = "Maximum Eigenvalue", xlabel = "Configuration")
     end
 end
 
 function plot_mineig(ens)
+    range = ens.analysis[:, :confno]
     if length(Set(ens.analysis.mineig)) == 1
         @error "No MinEig data."
         return nothing
     else
-        plot(ens.analysis.mineig, title = "Minimum Eigenvalue", xlabel = "Configuration")
+        plot(range, ens.analysis.mineig, title = "Minimum Eigenvalue", xlabel = "Configuration")
     end
 end
 
@@ -461,8 +463,9 @@ function plot_adjoint_polyakov_hist(ens)
 end
 
 function plot_adjoint_polyakov(ens)
+    range = ens.analysis[:, :confno]
     data = hcat(ens.analysis.adjoint_polyakov...)
-    plot([data[i, :] for i in 1:4], layout = 4, plot_title = "Adjoint Polyakov", label = ["0" "1" "2" "3"])
+    plot(range, [data[i, :] for i in 1:4], layout = 4, plot_title = "Adjoint Polyakov", label = ["0" "1" "2" "3"])
 end
 
 function plot_fundamental_polyakov_hist(ens)
@@ -471,6 +474,7 @@ function plot_fundamental_polyakov_hist(ens)
 end
 
 function plot_fundamental_polyakov(ens)
+    range = ens.analysis[:, :confno]
     data = real.(hcat(ens.analysis.fundamental_polyakov...))
-    plot([data[i, :] for i in 1:4], layout = 4, plot_title = "Fundamental Polyakov (Real Part)", label = ["0" "1" "2" "3"])
+    plot(range, [data[i, :] for i in 1:4], layout = 4, plot_title = "Fundamental Polyakov (Real Part)", label = ["0" "1" "2" "3"])
 end
