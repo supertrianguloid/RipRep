@@ -462,7 +462,7 @@ function extract_measurements_only(df::DataFrame; β, csw)
     return Ensemble(metadata, DataFrame([metadata]), traj_data, traj_data)
 end
 
-function load_ensemble(path::String)
+function load_ensemble(path::String; no_measurements = false)
     @debug "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
     @debug "Checking file health..."
@@ -480,8 +480,10 @@ function load_ensemble(path::String)
     trajectory_data = extract_trajectory_data(trajectories)
     @debug "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
-    @debug "Post-processing correlators"
-    data = post_process_correlators(data)
+    if !no_measurements
+        @debug "Post-processing correlators"
+        data = post_process_correlators(data)
+    end
     @debug "Extracting global metadata..."
     global_metadata = extract_global_metadata(path, output_df, data, run_metadata)
     return Ensemble(global_metadata, run_metadata, data, data)

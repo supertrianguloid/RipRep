@@ -63,6 +63,10 @@ function propagate_product(x, y)
     return [x[1]*y[1], sqrt((x[2]/x[1])^2 + (y[2]/y[1])^2)]
 end
 
+function propagate_ratio(x, y)
+    return [x[1]/y[1], sqrt((x[2]/x[1])^2 + (y[2]/y[1])^2)]
+end
+
 function propagate_square(x)
     return [x[1]^2, (2*x[1]*x[2])]
 end
