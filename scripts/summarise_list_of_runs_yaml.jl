@@ -90,6 +90,14 @@ function process_ensemble(line, ensemble_data)
         end
 	therm = get_key_or_nothing(ensemble_data, "therm")
         if !contains_nans
+            try
+                @info "Plotting plaquette..."
+                plot_plaquette(ens)
+                save_figure("plaquette")
+            catch e
+                @error "Failed!"
+                @error e
+            end
             if therm == nothing
                 if ens.global_metadata[:nconfs] > 1100
                     therm = 1000
@@ -120,14 +128,6 @@ function process_ensemble(line, ensemble_data)
                     return DEFAULT_FIT_WINDOW
                 end
                 return fit_window
-            end
-            try
-                @info "Plotting plaquette..."
-                plot_plaquette(ens)
-                save_figure("plaquette")
-            catch e
-                @error "Failed!"
-                @error e
             end
             try
                 @info "Plotting fundamental Polyakov..."
