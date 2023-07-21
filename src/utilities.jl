@@ -60,14 +60,23 @@ function standard_error(data; binsize = 1, nboot = 1000)
 end
 
 function propagate_product(x, y)
+    if ismissing(x) || ismissing(y)
+        return missing
+    end
     return [x[1]*y[1], sqrt((x[2]/x[1])^2 + (y[2]/y[1])^2)]
 end
 
 function propagate_ratio(x, y)
+    if ismissing(x) || ismissing(y)
+        return missing
+    end
     return [x[1]/y[1], sqrt((x[2]/x[1])^2 + (y[2]/y[1])^2)]
 end
 
 function propagate_square(x)
+    if ismissing(x)
+        return missing
+    end
     return [x[1]^2, (2*x[1]*x[2])]
 end
 
