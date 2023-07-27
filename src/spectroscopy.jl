@@ -411,7 +411,7 @@ function plot_effective_mass_fit(ens, corr, binsize, fitting_range, plotting_ran
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
     xlabel!(L"$T$")
-    ylabel!(corr)
+    ylabel!(String(corr))
 end
     
 function plot_pcac_fit(ens, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
