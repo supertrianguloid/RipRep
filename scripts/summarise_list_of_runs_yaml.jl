@@ -122,12 +122,20 @@ function process_ensemble(line, ensemble_data)
             L = ens.global_metadata[:geometry][1]
             T_middle = T ÷ 2
             DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):T_middle
+            DEFAULT_PLOT_WINDOW = 1:T_middle
             function get_fit_window(dict, key)
                 fit_window = get_key_or_nothing(dict, key)
                 if fit_window == nothing
                     return DEFAULT_FIT_WINDOW
                 end
                 return fit_window
+            end
+            function get_plot_window(dict, key)
+                plot_window = get_key_or_nothing(dict, key)
+                if plot_window == nothing
+                    return DEFAULT_PLOT_WINDOW
+                end
+                return plot_window
             end
             try
                 @info "Plotting fundamental Polyakov..."
@@ -185,13 +193,14 @@ function process_ensemble(line, ensemble_data)
                 @info "PCAC mass..."
                 bs, tune = get_binsize_tune(ensemble_data, "pcac_binsize")
                 fit_window = get_fit_window(ensemble_data, "pcac_fitwindow")
+                plot_window = get_plot_window(ensemble_data, "pcac_plotwindow")
                 analysis[:pcac] = bootstrap_effective_pcac(measurements.analysis, bs)
-                plot_pcac_mass(measurements, bs)
+                plot_pcac_mass(measurements, bs, plotting_range = plot_window)
                 save_figure("pcac_mass")
                 analysis[:m_pcac] = fit_pcac_mass(measurements, bs, fit_window)
                 analysis[:pcac_binsize] = bs
                 analysis[:pcac_fitwindow] = fit_window
-                plot_pcac_fit(measurements, bs, fit_window, 1:T_middle)
+                plot_pcac_fit(measurements, bs, fit_window, plot_window)
                 save_figure("pcac_mass_fit")
                 if tune
                     tune_binsize_pcac_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
@@ -205,13 +214,14 @@ function process_ensemble(line, ensemble_data)
                 @info "Fps..."
                 bs, tune = get_binsize_tune(ensemble_data, "fps_binsize")
                 fit_window = get_fit_window(ensemble_data, "fps_fitwindow")
+                plot_window = get_plot_window(ensemble_data, "fps_plotwindow")
                 analysis[:effective_fps] = bootstrap_effective_fps(measurements.analysis, T, L, bs)
-                plot_fps(measurements, bs)
+                plot_fps(measurements, bs, plotting_range = plot_window)
                 save_figure("fps")
                 analysis[:fps] = fit_fps(measurements, bs, fit_window)
                 analysis[:fps_binsize] = bs
                 analysis[:fps_fitwindow] = fit_window
-                plot_fps_fit(measurements, bs, fit_window, 1:T_middle)
+                plot_fps_fit(measurements, bs, fit_window, plot_window)
                 save_figure("fps_fit")
                 if tune
                     tune_binsize_fps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
@@ -225,13 +235,14 @@ function process_ensemble(line, ensemble_data)
                 @info "Gps..."
                 bs, tune = get_binsize_tune(ensemble_data, "gps_binsize")
                 fit_window = get_fit_window(ensemble_data, "gps_fitwindow")
+                plot_window = get_plot_window(ensemble_data, "gps_plotwindow")
                 analysis[:effective_gps] = bootstrap_effective_gps(measurements.analysis, ens.global_metadata[:geometry][1], bs)
-                plot_gps(measurements, bs)
+                plot_gps(measurements, bs, plotting_range = plot_window)
                 save_figure("gps")
                 analysis[:gps] = fit_gps(measurements, bs, fit_window)
                 analysis[:gps_binsize] = bs
                 analysis[:gps_fitwindow] = fit_window
-                plot_gps_fit(measurements, bs, fit_window, 1:T_middle)
+                plot_gps_fit(measurements, bs, fit_window, plot_window)
                 save_figure("gps_fit")
                 if tune
                     tune_binsize_gps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
@@ -246,13 +257,14 @@ function process_ensemble(line, ensemble_data)
                     @info String(corr) * "..."
                     bs, tune = get_binsize_tune(ensemble_data, String(corr)*"_binsize")
                     fit_window = get_fit_window(ensemble_data, String(corr)*"_fitwindow")
+                    plot_window = get_fit_window(ensemble_data, String(corr)*"_plotwindow")
                     analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(measurements.analysis, corr, bs)
-                    plot_effective_mass(measurements, corr, bs)
+                    plot_effective_mass(measurements, corr, bs, plotting_range = plot_window)
                     save_figure("effective_mass_" * String(corr))
                     analysis[corr] = fit_effective_mass(measurements, corr, bs, fit_window)
                     analysis[Symbol(String(corr) * "_binsize")] = bs
                     analysis[Symbol(String(corr) * "_fitwindow")] = bs
-                    plot_effective_mass_fit(measurements, corr, bs, fit_window, 1:T_middle)
+                    plot_effective_mass_fit(measurements, corr, bs, fit_window, plot_window)
                     save_figure("effective_mass_" * String(corr) * "_fit")
                     if tune
                         tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window)
@@ -267,12 +279,17 @@ function process_ensemble(line, ensemble_data)
                 @info "mv/mpi..."
                 bs, tune = get_binsize_tune(ensemble_data, "ratio_mv_mpi_binsize")
                 fit_window = get_fit_window(ensemble_data, "ratio_mv_mpi_fitwindow")
+                plot_window = get_plot_window(ensemble_data, "ratio_mv_mpi_plotwindow")
                 analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(measurements.analysis, :gk_folded, :g5_folded, bs)
-                plot_effective_mass_ratio(measurements, :gk_folded, :g5_folded, bs)
-                save_figure("effective_ratio_mv_mpi")
-                analysis[:ratio_mv_mpi] = [last(analysis[:effective_mass_ratio_mv_mpi][1]), last(analysis[:effective_mass_ratio_mv_mpi][2])]
+                analysis[:ratio_mv_mpi] = fit_effective_mass_ratio(measurements, :gk_folded, :g5_folded, bs, fit_window)
+                plot_effective_mass_ratio_fit(measurements, :gk_folded, :g5_folded, bs, fit_window, plot_window)
+                save_figure("effective_ratio_mv_mpi_fit")
                 analysis[:ratio_mv_mpi_binsize] = bs
-                analysis[:ratio_mv_mpi_fitwindow] = bs
+                analysis[:ratio_mv_mpi_fitwindow] = fit_window
+                if tune
+                    tune_effective_mass_ratio_fit(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window)
+                    save_figure(String(corr)*"_autocorrelations")
+                end
             catch e
                 @error "Failed!"
                 @error e
