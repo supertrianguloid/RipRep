@@ -259,7 +259,7 @@ function process_ensemble(line, ensemble_data)
                     @info String(corr) * "..."
                     bs, tune = get_binsize_tune(ensemble_data, String(corr)*"_binsize")
                     fit_window = get_fit_window(ensemble_data, String(corr)*"_fitwindow")
-                    plot_window = get_fit_window(ensemble_data, String(corr)*"_plotwindow")
+                    plot_window = get_plot_window(ensemble_data, String(corr)*"_plotwindow")
                     analysis[Symbol("effective_"* String(corr))] = bootstrap_effective_mass(measurements.analysis, corr, bs)
                     plot_effective_mass(measurements, corr, bs, plot_window)
                     save_figure("effective_mass_" * String(corr))
