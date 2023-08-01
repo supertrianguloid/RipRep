@@ -24,6 +24,7 @@ DEFAULT_TUNE_BINSIZES = collect(1:6:80)
 TIKZ = false
 
 NBOOT_LARGE = 2000
+NBOOT_TUNING = 50
 
 WF_REF = 1.0
 
@@ -207,7 +208,7 @@ function process_ensemble(line, ensemble_data)
                 plot_pcac_fit(measurements, bs, fit_window, plot_window)
                 save_figure("pcac_mass_fit")
                 if tune
-                    tune_binsize_pcac_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
+                    tune_binsize_pcac_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window, nboot = NBOOT_TUNING)
                     save_figure("pcac_mass_autocorrelations")
                 end
             catch e
@@ -228,7 +229,7 @@ function process_ensemble(line, ensemble_data)
                 plot_fps_fit(measurements, bs, fit_window, plot_window)
                 save_figure("fps_fit")
                 if tune
-                    tune_binsize_fps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
+                    tune_binsize_fps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window, nboot = NBOOT_TUNING)
                     save_figure("fps_autocorrelations")
                 end
             catch e
@@ -249,7 +250,7 @@ function process_ensemble(line, ensemble_data)
                 plot_gps_fit(measurements, bs, fit_window, plot_window)
                 save_figure("gps_fit")
                 if tune
-                    tune_binsize_gps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window)
+                    tune_binsize_gps_fit(measurements, DEFAULT_TUNE_BINSIZES, fit_window, nboot = NBOOT_TUNING)
                     save_figure("gps_autocorrelations")
                 end
             catch e
@@ -271,7 +272,7 @@ function process_ensemble(line, ensemble_data)
                     plot_effective_mass_fit(measurements, corr, bs, fit_window, plot_window)
                     save_figure("effective_mass_" * String(corr) * "_fit")
                     if tune
-                        tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window)
+                        tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window, nboot = NBOOT_TUNING)
                         save_figure(String(corr)*"_autocorrelations")
                     end
                 catch e
@@ -291,7 +292,7 @@ function process_ensemble(line, ensemble_data)
                 analysis[:ratio_mv_mpi_binsize] = bs
                 analysis[:ratio_mv_mpi_fitwindow] = fit_window
                 if tune
-                    tune_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window, nboot=NBOOT_LARGE)
+                    tune_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window, nboot=NBOOT_TUNING)
                     save_figure("ratio_mv_mpi_autocorrelations")
                 end
             catch e
