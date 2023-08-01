@@ -366,6 +366,12 @@ function plot_effective_mass_ratio!(ens, numerator, denominator, binsize, plotti
     plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)
 end
 
+function fit_effective_mass_ratio_naive(analysis::DataFrame, numerator, denominator, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    μ, σ = bootstrap_effective_mass_ratio(analysis, numerator, denominator, binsize, binmethod=binmethod, nboot=nboot)
+    fit = fit_const(fitting_range, μ, σ)
+    return [only(fit.param), only(stderror(fit))]
+end
+
 function fit_effective_mass_ratio(analysis::DataFrame, numerator, denominator, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn try
                       subsample = get_subsample(analysis, binsize, method=binmethod)
@@ -399,9 +405,32 @@ function tune_effective_mass_ratio_fit(ens, numerator, denominator, binsizes, fi
     end
     plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
+function tune_effective_mass_ratio_fit_naive(ens, numerator, denominator, binsizes, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(ens.analysis, bs)
+            push!(fit_error, fit_effective_mass_ratio_naive(subsample, numerator, denominator, 1, fitting_range, binmethod = binmethod, nboot = nboot)[2])
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
+end
 
 function plot_effective_mass_ratio_fit(ens, numerator, denominator, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     μ, σ = fit_effective_mass_ratio(ens.analysis, numerator, denominator, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
+    @info μ, σ
+    plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
+    plot_const!(fitting_range, μ, σ)
+    xlabel!(L"$T$")
+    ylabel!(String(numerator) * "/" * String(denominator) )
+end
+
+function plot_effective_mass_ratio_fit_naive(ens, numerator, denominator, binsize, fitting_range, plotting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
+    μ, σ = fit_effective_mass_ratio_naive(ens.analysis, numerator, denominator, binsize, fitting_range, binmethod=binmethod, nboot=nboot)
     @info μ, σ
     plot_effective_mass_ratio(ens, numerator, denominator, binsize, plotting_range, binmethod = binmethod, nboot = nboot)
     plot_const!(fitting_range, μ, σ)
