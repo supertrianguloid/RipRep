@@ -126,14 +126,14 @@ function process_ensemble(line, ensemble_data)
             DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):T_middle
             DEFAULT_PLOT_WINDOW = 1:T_middle
             function get_fit_window(dict, key)
-                fit_window = get_key_or_nothing(dict, key)
+                fit_window = string_to_unitrange(get_key_or_nothing(dict, key))
                 if fit_window == nothing
                     return DEFAULT_FIT_WINDOW
                 end
                 return fit_window
             end
             function get_plot_window(dict, key)
-                plot_window = get_key_or_nothing(dict, key)
+                plot_window = string_to_unitrange(get_key_or_nothing(dict, key))
                 if plot_window == nothing
                     return DEFAULT_PLOT_WINDOW
                 end
