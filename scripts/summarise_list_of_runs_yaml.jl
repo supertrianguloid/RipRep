@@ -286,12 +286,12 @@ function process_ensemble(line, ensemble_data)
                 plot_window = get_plot_window(ensemble_data, "ratio_mv_mpi_plotwindow")
                 analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(measurements.analysis, :gk_folded, :g5_folded, bs)
                 analysis[:ratio_mv_mpi] = fit_effective_mass_ratio_naive(measurements.analysis, :gk_folded, :g5_folded, bs, fit_window)
-                plot_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, bs, fit_window, plot_window, NBOOT_LARGE)
+                plot_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, bs, fit_window, plot_window, nboot=NBOOT_LARGE)
                 save_figure("effective_ratio_mv_mpi_fit")
                 analysis[:ratio_mv_mpi_binsize] = bs
                 analysis[:ratio_mv_mpi_fitwindow] = fit_window
                 if tune
-                    tune_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window, NBOOT_LARGE)
+                    tune_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window, nboot=NBOOT_LARGE)
                     save_figure("ratio_mv_mpi_autocorrelations")
                 end
             catch e
