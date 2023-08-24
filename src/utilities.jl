@@ -1,6 +1,7 @@
 using Statistics
 using DataFrames
 using YAML
+using LsqFit
 
 function thermalise!(data_struct, thermsize; method = :equal)
     data_struct.analysis = data_struct.data[thermsize:end,:]
@@ -80,6 +81,12 @@ function propagate_square(x)
     return [x[1]^2, (2*x[1]*x[2])]
 end
 
+function combine_uncertainty(x...)
+    fit = fit_const(1:length(x), hcat(x...)[1, :], hcat(x...)[2, :])
+    return [only(fit.param), only(stderror(fit))]
+end
+
+
 function d(a; h = 1, last_point_antisymmetric = false)
     array_indices = eachindex(a)
     deriv = []
@@ -134,9 +141,9 @@ end
 function plot_const(range, c, cerr = nothing; _bang = false)
     plot_func = _bang ? plot! : plot
     if cerr != nothing
-        plot_func(range, repeat([c], length(range)), ribbon=(cerr, cerr))
+        plot_func(range, repeat([c], length(range)), ribbon=(cerr, cerr), label="Fit")
     else
-        plot_func(range, repeat([c], length(range)))
+        plot_func(range, repeat([c], length(range)), label="Fit")
     end
 end
 

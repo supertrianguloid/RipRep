@@ -2,6 +2,7 @@ using Base: nothing_sentinel, full_va_len
 using Plots
 using LsqFit
 using Base.Threads: @spawn
+using LaTeXStrings
 
 NBOOT_DEFAULT = 20
 
@@ -47,7 +48,7 @@ function plot_tc_hist(wf; title="")
     else
         t = length(wf.data.t[1])÷2
     end
-    histogram([i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
+    histogram([i[t] for i in wf.data[:, :TC]], title=title, label=L"$t = "*string(wf.data[1,:t][t])*L"$")
 end
 
 function plot_t2e(wf, range = :all; binsize = 1, nboot=1000, title="")
@@ -148,10 +149,6 @@ function find_t0(wf, window; nboot = 100, ref = 1.0)
     return _find_t0(wf, wf.analysis, window, wf.metadata[:dt], nboot = nboot, ref = ref)
 end
 
-function tune_binsize_w0(wf, binsizes, eitherside = 2, nboot = NBOOT_DEFAULT, sym = true, fullboostrap = true)
-
-end
-
 function reference_time(yref, c, cvar, m, mvar, cov = 0)
     return (yref - c)/m, sqrt(
         (1/m)^2 * cvar + 
@@ -183,3 +180,23 @@ function auto_w0(wf::WilsonFlow; binsize = 1, eitherside = 2, nboot = NBOOT_DEFA
     return auto_w0(wf.analysis, wf.metadata[:dt], binsize = binsize, eitherside = eitherside, nboot = nboot, ref = ref, sym=sym, fullbootstrap=fullbootstrap)
 end
     
+
+function tune_binsize_auto_w0(wf::WilsonFlow, binsizes; eitherside = 2, ref = 1, sym = true, nboot = NBOOT_DEFAULT)
+    y = []
+    yerr = []
+    for bs in binsizes
+        fit_error = []
+        for i in 1:nboot
+            subsample = get_subsample(wf.analysis, bs)
+            try
+                e = auto_w0(subsample, wf.metadata[:dt], binsize = 1, eitherside = eitherside, nboot = nboot, ref = ref, sym = sym)[2]
+                push!(fit_error, e)
+            catch e
+                
+            end
+        end
+        push!(y, mean(fit_error))
+        push!(yerr, std(fit_error))
+    end
+    plot(binsizes, y, yerr=yerr, xticks = binsizes)
+end
