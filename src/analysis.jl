@@ -1,8 +1,8 @@
-using YAML: default_implicit_resolvers
 using Plots
+using LsqFit
+using DataFrames
 using LaTeXStrings
 using SciPy
-import Base.filter
 include("utilities.jl")
 
 function plot_data(data, x, y; β = :all, csw = :all, _bang = false, markersize = 1, markershape = :circle, ignore = [])
@@ -16,15 +16,15 @@ function plot_data!(data, x, y; β = :all, csw = :all, _bang = true, markersize 
     plot_data(data, x, y, β = β, csw = csw, _bang = _bang, markersize = markersize, markershape = markershape, ignore = ignore)
 end
 
-function get_data(data, x, y; β = :all, csw = :all, ignore = [])
+function get_data(data, x, y; β = :all, csw = :all, ignore = [], xlims = [-100000, 100000], ylims = [-100000, 100000])
     data = data[[i for i=1:nrow(data) if !(i in ignore)], :]
-    filtered = filter([:csw, :β, x, y] => (csw_v, β_v, x_v, y_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all) && !ismissing(x_v) && !isnothing(x_v) && !ismissing(y_v) && !isnothing(y_v), data)
+    filtered = DataFrames.filter([:csw, :β, x, y] => (csw_v, β_v, x_v, y_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all) && !ismissing(x_v) && !isnothing(x_v) && !ismissing(y_v) && !isnothing(y_v) && y_v[1] > ylims[1] && y_v[1] < ylims[2] && x_v[1] > xlims[1] && x_v[1] < xlims[2], data)
     y_vals = filtered[:, y]
     y_err = nothing
     x_vals = filtered[:, x]
     x_err = nothing
     if isa(first(y_vals), Vector) && length(first(y_vals)) == 2
-        y_err = [i[2] for i in y_vals]
+        y_err = [i[2] for i in y_vals ]
         y_vals = [i[1] for i in y_vals]
     end
     if isa(first(x_vals), Vector) && length(first(x_vals)) == 2
@@ -34,8 +34,8 @@ function get_data(data, x, y; β = :all, csw = :all, ignore = [])
     return x_vals, x_err, y_vals, y_err
 end
 
-function linear_fit(data, x, y;  β = :all, csw = :all, _bang = false, markersize = 1, markershape = :circle, ignore = [], plotrange = :default)
-    x_vals, x_err, y_vals, y_err = get_data(data, x, y, β = β, csw = csw, ignore = ignore)
+function linear_fit(data, x, y;  β = :all, csw = :all, _bang = false, markersize = 1, markershape = :circle, ignore = [], plotrange = :default, xlims = [-100000, 100000], ylims = [-100000, 100000])
+    x_vals, x_err, y_vals, y_err = get_data(data, x, y, β = β, csw = csw, ignore = ignore, xlims = xlims, ylims = ylims)
     plot_data(data, x, y, β = β, csw = csw, _bang = _bang, markersize = markersize, markershape = markershape, ignore = ignore)
     range = [min(x_vals...), max(x_vals...)]
     cov = nothing
@@ -78,19 +78,19 @@ end
 
 
 function filter(data::DataFrame; β = :all, csw = :all)
-    return filter([:β, :csw] => (β_v, csw_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all), data)
+    return DataFrames.filter([:β, :csw] => (β_v, csw_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all), data)
 end
 
 function load_data(path::String)
     data = load_yaml_as_dataframe(path)
     data[!, :mpi2] = select(data, :g5_folded => ByRow(propagate_square) => :mpi2)[:, 1]
-    data[!, :mvmpi] = select(data, [:gk_folded, :g5_folded] => ByRow(propagate_ratio) => :mpi2)[:, 1]
     data[!, :w0mpi] = select(data, [:w0, :g5_folded] => ByRow(propagate_product) => :w0mpi)[:, 1]
     data[!, :w0mpcac] = select(data, [:w0, :m_pcac] => ByRow(propagate_product) => :w0mpcac)[:, 1]
-    data[!, :mv_over_mps_naive] = select(data, [:gk_folded, :g5_folded] => ByRow(propagate_ratio) => :mv_over_mps_naive)[:, 1]
     data[!, :w0mpi2] = select(data, [:w0mpi] => ByRow(propagate_square) => :w0mpi2)[:, 1]
     data[!, :w0mv] = select(data, [:w0, :gk_folded] => ByRow(propagate_product) => :w0mv)[:, 1]
+    data[!, :smearing_radius] = select(data, [:w0, :geometry] => ByRow((x, y) -> sqrt(8)*x/y[3]) => :smearing_radius)[:, 1]
     data[!, :L] = select(data, :geometry => ByRow(x -> last(x)) => :geometry)[:, 1]
+    data[!, :mpiL] = select(data, [:L, :g5_folded] => ByRow((L, mpi) -> L*mpi[1]) => :mpiL)[:, 1]
     data[!, :T] = select(data, :geometry => ByRow(x -> first(x)) => :geometry)[:, 1]
     return data
 end

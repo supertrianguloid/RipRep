@@ -370,6 +370,10 @@ end
 function _extractor_all_matching_lines(regex, name, df)
     return filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
 end
+
+function drop_runs_with_no_confs(data, runs, run_metadata)
+    return runs[unique(data.runno), :], run_metadata[unique(data.runno), :]
+end
     
 
 function run_health_checks(run_metadata)
@@ -462,6 +466,7 @@ function extract_measurements_only(df::DataFrame; β, csw)
     return Ensemble(metadata, DataFrame([metadata]), traj_data, traj_data)
 end
 
+
 function load_ensemble(path::String; no_measurements = false)
     @debug "Loading the output file..."
     output_df = load_output_file_as_dataframe(path)
@@ -480,6 +485,7 @@ function load_ensemble(path::String; no_measurements = false)
     trajectory_data = extract_trajectory_data(trajectories)
     @debug "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
+    runs, run_metadata = drop_runs_with_no_confs(data, runs, run_metadata)
     if !no_measurements
         @debug "Post-processing correlators"
         data = post_process_correlators(data)
