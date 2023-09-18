@@ -56,6 +56,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
     global_metadata[:csw] = only(union(run_metadata.csw))
     global_metadata[:β] = only(union(run_metadata[:, :β]))
     global_metadata[:m0] = only(union(run_metadata[:, :m0]))
+    global_metadata[:mu] = only(union(run_metadata[:, :mu]))
 
     runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
@@ -155,7 +156,7 @@ function file_health_checks(output_df::DataFrame)
 end
 
 function extract_run_metadata(runs)
-    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], action=Any[], csw=Float64[], rng=Any[], β=Float64[], m0=Float64[], geometry=OffsetArray[])
+    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], action=Any[], csw=Float64[], rng=Any[], β=Float64[], m0=Float64[], mu=Float64[], geometry=OffsetArray[])
     for run_number in 1:length(runs)
         metadata = Dict()
         metadata[:finished_cleanly] = false
@@ -178,6 +179,7 @@ function extract_run_metadata(runs)
 
         if(tm_alt != nothing)
             metadata[:m0] = parse(Float64, tm_alt[3])
+            metadata[:mu] = parse(Float64, tm_alt[4])
         else
             metadata[:m0] = parse(Float64, hmc[3])
         end
@@ -185,7 +187,7 @@ function extract_run_metadata(runs)
         metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true)), "x")), 0:3)
         
         
-        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:geometry]]) 
+        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:mu], metadata[:geometry]]) 
     end
     return runs_metadata
 end
