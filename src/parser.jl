@@ -260,7 +260,6 @@ function extract_trajectory_data(trajectories)
         for i in 0:3
             adj_poly = _extractor_only_one_matching_line(r"^Polyakov direction " * string(i) * r" = (.*)$", "ADJ_POLYAKOV", traj)
             if isnothing(adj_poly)
-                data[:completed] = false
                 data[:adjoint_polyakov] = missing
                 break
             else
@@ -273,7 +272,6 @@ function extract_trajectory_data(trajectories)
         for i in 0:3
             fund_poly = _extractor_only_one_matching_line(r"^Polyakov direction " * string(i) * r" = (.*) (.*)$", "FUND_POLYAKOV", traj)
             if isnothing(fund_poly)
-                data[:completed] = false
                 data[:fundamental_polyakov] = missing
                 break
             else
