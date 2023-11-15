@@ -485,7 +485,7 @@ function load_ensemble(path::String; no_measurements = false)
     trajectory_data = extract_trajectory_data(trajectories)
     @debug "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
-    runs, run_metadata = drop_runs_with_no_confs(data, runs, run_metadata)
+    #runs, run_metadata = drop_runs_with_no_confs(data, runs, run_metadata)
     if !no_measurements
         @debug "Post-processing correlators"
         data = post_process_correlators(data)

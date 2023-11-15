@@ -38,7 +38,7 @@ function plot_tc(wf; title="")
     else
         t = length(wf.data.t[1])÷2
     end
-    plot(1:nrow(wf.data), [i[t] for i in wf.data[:, :TC]], title=title, label="t = "*string(wf.data[1,:t][t]))
+    plot(1:nrow(wf.data), [i[t] for i in wf.data[:, :TC]], title=title, label=latexstring("t = ", wf.data[1,:t][t]))
 end
 
 function plot_tc_hist(wf; title="")
@@ -48,7 +48,7 @@ function plot_tc_hist(wf; title="")
     else
         t = length(wf.data.t[1])÷2
     end
-    histogram([i[t] for i in wf.data[:, :TC]], title=title, label=L"$t = "*string(wf.data[1,:t][t])*L"$")
+    histogram([i[t] for i in wf.data[:, :TC]], title=title, label=latexstring("t = ", wf.data[1,:t][t]))
 end
 
 function plot_t2e(wf, range = :all; binsize = 1, nboot=1000, title="")
