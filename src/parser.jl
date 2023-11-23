@@ -56,7 +56,10 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
     global_metadata[:csw] = only(union(run_metadata.csw))
     global_metadata[:β] = only(union(run_metadata[:, :β]))
     global_metadata[:m0] = only(union(run_metadata[:, :m0]))
-    global_metadata[:mu] = last(union(run_metadata[:, :mu]))
+    try
+        global_metadata[:mu] = last(union(run_metadata[:, :mu]))
+    catch e
+    end
 
     runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
