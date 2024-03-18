@@ -14,6 +14,8 @@ WF_TRAJ_BEGIN_REGEX = r"^Configuration from (.*)$"
 WF_TRAJ_BEGIN_REGEX_RUN_NUMBER = r"^Configuration from .*n([0-9]+)$"
 WF_MEASUREMENT_REGEX = r"^WF \(t,E,t2\*E,Esym,t2\*Esym,TC\) = (.*)$"
 WF_TIMING_REGEX = r".* done \[(.*) sec (.*) usec\]$"
+MVM_REGEX = r"Trajectory .* ; (.*)$"
+
 CORRELATORS = [:g5, :g5_im, :id, :id_im, :g0, :g0_im, :g1, :g1_im, :g2, :g2_im, :g3, :g3_im, :g0g1, :g0g1_im, :g0g2, :g0g2_im, :g0g3, :g0g3_im, :g0g5, :g0g5_im, :g5g1, :g5g1_im, :g5g2, :g5g2_im, :g5g3, :g5g3_im, :g0g5g1, :g0g5g1_im, :g0g5g2, :g0g5g2_im, :g0g5g3, :g0g5g3_im, :g5_g0g5_re, :g5_g0g5_im]
 
 mutable struct Ensemble
@@ -205,9 +207,9 @@ end
 
 
 function extract_trajectory_data(trajectories)
-    TRAJ_MEASUREMENTS = [:accepted, :time, :plaquette, :dS, :maxeig, :mineig, :adjoint_polyakov, :fundamental_polyakov]
+    TRAJ_MEASUREMENTS = [:accepted, :time, :mvm, :plaquette, :dS, :maxeig, :mineig, :adjoint_polyakov, :fundamental_polyakov]
 
-    traj_data = DataFrame([Int[], Int[], Bool[], Union{Bool, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{OffsetArray{Float64}, Missing}[], Union{OffsetArray{ComplexF64}, Missing}[], fill(Union{OffsetArray{Float64}, Missing}[], length(CORRELATORS))...], [:confno, :runno, :completed, TRAJ_MEASUREMENTS..., CORRELATORS...])
+    traj_data = DataFrame([Int[], Int[], Bool[], Union{Bool, Missing}[], Union{Float64, Missing}[], Union{Int64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{Float64, Missing}[], Union{OffsetArray{Float64}, Missing}[], Union{OffsetArray{ComplexF64}, Missing}[], fill(Union{OffsetArray{Float64}, Missing}[], length(CORRELATORS))...], [:confno, :runno, :completed, TRAJ_MEASUREMENTS..., CORRELATORS...])
     for traj in trajectories
         data = Dict()
         data[:confno] = parse(Int, only(_extractor_only_one_matching_line(TRAJ_BEGIN_REGEX, "MAIN", traj, vital=true)))
@@ -229,10 +231,13 @@ function extract_trajectory_data(trajectories)
         end
         
         time = _extractor_only_one_matching_line(TRAJ_GENERATED_REGEX, "MAIN", traj)
+	mvm = _extractor_only_one_matching_line(MVM_REGEX, "MAIN", traj)
         if isnothing(time)
             data[:completed] = false
+	    data[:mvm] = missing
         else
             data[:time] = parse(Int, time[2]) + 1e-6*parse(Int, time[3])
+            data[:mvm] = parse(Int, only(mvm))
         end
 
         plaquette = _extractor_only_one_matching_line(r"^Plaquette: (.*)$", "MAIN", traj)
@@ -295,7 +300,7 @@ function extract_trajectory_data(trajectories)
             end
         end
 
-        push!(traj_data, [data[:confno], data[:runno], data[:completed], data[:accepted], data[:time], data[:plaquette], data[:dS], data[:maxeig], data[:mineig], data[:adjoint_polyakov], data[:fundamental_polyakov], corrs...])
+	push!(traj_data, [data[:confno], data[:runno], data[:completed], data[:accepted], data[:time], data[:mvm], data[:plaquette], data[:dS], data[:maxeig], data[:mineig], data[:adjoint_polyakov], data[:fundamental_polyakov], corrs...])
     end
     return traj_data
 end
