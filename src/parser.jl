@@ -33,7 +33,7 @@ end
 
 function load_output_file_as_dataframe(path::String)
     df = DataFrame(lineno=Int[], name=String[], loglevel=Int[], output=String[])
-    line_regex = r"^\[([a-zA-Z_]+)\]\[(-?[0-9]+)\](.*)"
+    line_regex = r"^\[([a-zA-Z_ ]+)\]\[(-?[0-9]+)\](.*)"
     lineno = 0
     for line in eachline(open(path))
         lineno += 1
@@ -110,7 +110,7 @@ end
 # TODO Needs to be able to handle runs with < 3 trajectories
 function split_run_dataframe_into_trajectories(runs)
     trajectories = []
-    for run_number in 1:length(runs)
+    for run_number in eachindex(runs)
         run_df = runs[run_number]
         traj_boundaries = filter([:name, :output] => (name, output) -> name == "MAIN" && !isnothing(match(TRAJ_BEGIN_REGEX, output)), run_df, view=true).lineno
         if length(traj_boundaries) == 1
@@ -133,7 +133,7 @@ end
 
 function split_wf_dataframe_into_trajectories(runs)
     trajectories = []
-    for run_number in 1:length(runs)
+    for run_number in eachindex(runs)
         run_df = runs[run_number]
         traj_boundaries = filter([:name, :output] => (name, output) -> name == "MAIN" && !isnothing(match(WF_TRAJ_BEGIN_REGEX, output)), run_df, view=true).lineno
         if length(traj_boundaries) == 1
