@@ -72,7 +72,7 @@ function linear_fit(data, x, y;  β = :all, csw = :all, _bang = false, markersiz
     if plotrange != :default
         range = plotrange
     end
-    plot!(range, y, ribbon = x -> sqrt(cov[4] + cov[1]*x^2 + 2*x*cov[2]))
+    return (params=(m=params[1], c=params[2]), residuals=chisq, plot=plot!(range, y, ribbon = x -> sqrt(cov[4] + cov[1]*x^2 + 2*x*cov[2])))
 end
 
 

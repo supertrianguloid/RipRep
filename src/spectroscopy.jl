@@ -110,7 +110,7 @@ end
 function effective_mass(correlator, T)
     meffs = Float64[]
     eq(m, τ) = h(T, τ - 1, 0, m)/h(T, τ, 0, m) - correlator[τ - 1]/correlator[τ]
-    for τ in eachindex(correlator)[1:end]
+    for τ in (first(eachindex(correlator))+1):last(eachindex(correlator))
         push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
     end
     return meffs               
@@ -257,7 +257,7 @@ function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :ran
                     subsample = get_subsample(df, binsize, method=binmethod)
                     c = mean(subsample[:, corr])
                     if range != :all
-                        c = c[range]
+                        c = c[(first(range)-1):last(range)]
                     end
                     effective_mass(c, T)
            catch e
@@ -305,8 +305,8 @@ end
 function fit_effective_mass(analysis::DataFrame, corr, binsize, fitting_range; binmethod = :randomsample, nboot = NBOOT_DEFAULT)
     res = [@spawn try
                       subsample = get_subsample(analysis, binsize, method=binmethod)
-                      μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot)
-                      only(fit_const(fitting_range, μ, σ).param)
+                      μ, σ = bootstrap_effective_mass(subsample, corr, 1, binmethod=binmethod, nboot=nboot, range=fitting_range)
+                      only(fit_const(eachindex(μ), μ, σ).param)
            catch e
                missing
                end for i in 1:nboot]
@@ -341,12 +341,13 @@ function tune_effective_mass_fit(ens, corr, binsizes, fitting_range; binmethod =
 end
 
 function plot_effective_mass(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = false)
-    μ, σ = bootstrap_effective_mass(ens.analysis, corr, binsize, binmethod=binmethod, nboot=nboot)
+    correlator_timeslices = eachindex(ens.analysis[1, corr])
     if plotting_range == :all
-        plotting_range = eachindex(μ)
+        plotting_range = (first(correlator_timeslices) + 1):last(correlator_timeslices)
     end
+    μ, σ = bootstrap_effective_mass(ens.analysis, corr, binsize, binmethod=binmethod, nboot=nboot, range = plotting_range)
     plot_func = _bang ? plot! : plot
-    plot_func(plotting_range, μ[plotting_range], yerr=σ[plotting_range])
+    plot_func(plotting_range, μ, yerr=σ)
 end
 function plot_effective_mass!(ens, corr, binsize, plotting_range = :all; binmethod = :randomsample, nboot = NBOOT_DEFAULT, _bang = true)
     plot_effective_mass(ens, corr, binsize, plotting_range, binmethod = binmethod, nboot = nboot, _bang = _bang)

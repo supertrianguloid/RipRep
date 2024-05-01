@@ -138,17 +138,17 @@ function plot_line!(range, params; _bang = true)
     plot_line(range, params, _bang = true)
 end
 
-function plot_const(range, c, cerr = nothing; _bang = false)
+function plot_const(range, c, cerr = nothing; _bang = false, label = "Fit")
     plot_func = _bang ? plot! : plot
     if cerr != nothing
-        plot_func(range, repeat([c], length(range)), ribbon=(cerr, cerr), label="Fit")
+        plot_func(range, repeat([c], length(range)), ribbon=(cerr, cerr), label=label)
     else
-        plot_func(range, repeat([c], length(range)), label="Fit")
+        plot_func(range, repeat([c], length(range)), label=label)
     end
 end
 
-function plot_const!(range, c, cerr = nothing)
-    plot_const(range, c, cerr, _bang = true)
+function plot_const!(range, c, cerr = nothing; label = "Fit")
+    plot_const(range, c, cerr, _bang = true, label = label)
 end
 
 function plot_in_range(range, μ, σ; _bang = false)
@@ -226,3 +226,8 @@ function load_yaml_as_dataframe(file)
     end
     return df
 end
+
+function load_directory_of_ensembles(dirname::String)
+    return vcat([load_ensemble("$dirname/$d/out_0").run_metadata for d in filter(d -> isdir(d), readdir(dirname))]...)
+end
+    

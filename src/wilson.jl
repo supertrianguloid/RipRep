@@ -23,8 +23,8 @@ function plot_w(wf, range = :all; binsize = 1, nboot = 1000, _bang = false, titl
 
     index = _wf_time_to_index_w(wf.analysis, range[1]):_wf_time_to_index_w(wf.analysis, range[end])
     plot_func(index.*wf.metadata[:dt], mean(data)[index], yerr = standard_error(data, binsize=binsize, nboot=nboot)[index], title=title, legend=false)
-    xlabel!("\$t\$")
-    ylabel!("\$W(t)\$")
+    xlabel!(L"t")
+    ylabel!(L"W(t)")
 end
 
 function plot_w!(wf, range = :all, sym = true)
