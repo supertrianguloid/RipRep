@@ -126,8 +126,8 @@ function process_ensemble(line, ensemble_data)
             T = ens.global_metadata[:geometry][0]
             L = ens.global_metadata[:geometry][1]
             T_middle = T ÷ 2
-            DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):T_middle
-            DEFAULT_PLOT_WINDOW = 1:T_middle
+            DEFAULT_FIT_WINDOW = (T_middle - NO_FIT_POINTS):(T_middle - 1)
+            DEFAULT_PLOT_WINDOW = 3:(T_middle - 1)
             function get_fit_window(dict, key)
                 fit_window = get_key_or_nothing(dict, key)
                 if fit_window == nothing
