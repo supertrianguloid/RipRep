@@ -107,10 +107,14 @@ function tune_binsize_pcac_fit(ens, binsizes, fitting_range; binmethod = :random
     plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
-function effective_mass(correlator, T)
+# Takes a 0:t indexed vector and returns 1:t indexed effective mass
+function effective_mass(correlator, T, range = :default)
     meffs = Float64[]
     eq(m, τ) = h(T, τ - 1, 0, m)/h(T, τ, 0, m) - correlator[τ - 1]/correlator[τ]
-    for τ in (first(eachindex(correlator))+1):last(eachindex(correlator))
+    if range == :default
+	    range = (first(eachindex(correlator))+1):last(eachindex(correlator))
+    end
+    for τ in range
         push!(meffs, only(find_zeros(m -> eq(m, τ), 0, 100)))
     end
     return meffs               
@@ -249,17 +253,14 @@ function tune_binsize_fps_fit(ens, binsizes, fitting_range; binmethod = :randoms
     plot(binsizes, y, yerr=yerr, xticks = binsizes)
 end
 
-function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:all)
+function bootstrap_effective_mass(df::DataFrame, corr, binsize; binmethod = :randomsample, nboot = NBOOT_DEFAULT, range=:default)
     
     T = length(df[1, :g5])
     
     res = [@spawn try
                     subsample = get_subsample(df, binsize, method=binmethod)
                     c = mean(subsample[:, corr])
-                    if range != :all
-                        c = c[(first(range)-1):last(range)]
-                    end
-                    effective_mass(c, T)
+                    effective_mass(c, T, range)
            catch e
                missing
                end for i in 1:nboot]

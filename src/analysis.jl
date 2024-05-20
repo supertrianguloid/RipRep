@@ -2,6 +2,7 @@ using Plots
 using LsqFit
 using DataFrames
 using LaTeXStrings
+using PyCall
 using SciPy
 include("utilities.jl")
 
