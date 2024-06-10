@@ -1,0 +1,11 @@
+for conf in eachline(CONFFILE)
+	confno = lpad(last(split(conf, 'n')), 4, "0")
+	mkdir(confno)
+	cp(JOBFILE, "$confno/job")
+	cp(EXEFILE, "$confno/job")
+	cd(confno)
+	write("list", conf)
+	run(`sbatch job`)
+	cd("../")
+end
+
