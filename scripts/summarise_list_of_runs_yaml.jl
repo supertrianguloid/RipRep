@@ -341,6 +341,7 @@ function process_ensemble(line, ensemble_data)
                     w0 = auto_w0(wf, binsize = bs)
                     analysis[:w0] = w0
                     analysis[:w0_binsize] = bs
+		    analysis[:smearing_radius] = w0*sqrt(8)/L
                   if tune
                       tune_binsize_auto_w0(wf, DEFAULT_TUNE_BINSIZES, nboot = NBOOT_TUNING)
                       save_figure("w0_autocorrelations")

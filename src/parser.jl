@@ -189,7 +189,7 @@ function extract_run_metadata(runs)
             metadata[:m0] = parse(Float64, hmc[3])
         end
 
-        metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true)), "x")), 0:3)
+        metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true, multiple_but_unique_okay=true)), "x")), 0:3)
         
         
         push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:mu], metadata[:geometry]]) 
@@ -462,7 +462,7 @@ function extract_measurements_only(df::DataFrame; β, csw)
     end
 
     metadata = Dict()
-    metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", df, vital=true)), "x")), 0:3)
+    metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", df, vital=true, multiple_but_unique_okay=true )), "x")), 0:3)
     metadata[:m0] = mass
     metadata[:β] = β
     metadata[:csw] = csw
@@ -493,7 +493,7 @@ function load_ensemble(path::String; no_measurements = false)
     trajectory_data = extract_trajectory_data(trajectories)
     @debug "Dropping missing configurations..."
     data = drop_missing_configurations(trajectory_data)
-    #runs, run_metadata = drop_runs_with_no_confs(data, runs, run_metadata)
+    runs, run_metadata = drop_runs_with_no_confs(data, runs, run_metadata)
     if !no_measurements
         @debug "Post-processing correlators"
         data = post_process_correlators(data)

@@ -41,6 +41,17 @@ function plot_tc(wf; title="")
     plot(1:nrow(wf.data), [i[t] for i in wf.data[:, :TC]], title=title, label=latexstring("t = ", wf.data[1,:t][t]))
 end
 
+function get_tc(wf; title="")
+    a = findall(x -> x == 1, mean(wf.data[:,:W]) .> 1)
+    if !isempty(a)
+        t = first(a)
+    else
+        t = length(wf.data.t[1])÷2
+    end
+    return [i[t] for i in wf.data[:, :TC]]
+end
+
+
 function plot_tc_hist(wf; title="")
     a = findall(x -> x == 1, mean(wf.data[:,:W]) .> 1)
     if !isempty(a)

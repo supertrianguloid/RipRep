@@ -34,6 +34,10 @@ function get_data(data, x, y; β = :all, csw = :all, ignore = [], xlims = [-1000
     end
     return x_vals, x_err, y_vals, y_err
 end
+function linear_fit!(data, x, y;  β = :all, csw = :all, markersize = 1, markershape = :circle, ignore = [], plotrange = :default, xlims = [-100000, 100000], ylims = [-100000, 100000])
+	linear_fit(data, x, y;  β = β, csw = csw, _bang = true, markersize = markersize, markershape = markershape, ignore = ignore, plotrange = plotrange, xlims = xlims, ylims = ylims)
+end
+
 
 function linear_fit(data, x, y;  β = :all, csw = :all, _bang = false, markersize = 1, markershape = :circle, ignore = [], plotrange = :default, xlims = [-100000, 100000], ylims = [-100000, 100000])
     x_vals, x_err, y_vals, y_err = get_data(data, x, y, β = β, csw = csw, ignore = ignore, xlims = xlims, ylims = ylims)
@@ -78,14 +82,15 @@ end
 
 
 
-function filter(data::DataFrame; β = :all, csw = :all)
-    return DataFrames.filter([:β, :csw] => (β_v, csw_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all), data)
+function filter(data::DataFrame; β = :all, csw = :all, m0 = :all, path = :all)
+    return DataFrames.filter([:β, :csw, :m0, :path] => (β_v, csw_v, m0_v, path_v) -> (csw_v == csw || csw == :all) && (β_v == β || β == :all) && (m0_v == m0 || m0 == :all) && (path_v == path || path == :all), data)
 end
 
 function load_data(path::String)
     data = load_yaml_as_dataframe(path)
     data[!, :mpi2] = select(data, :g5_folded => ByRow(propagate_square) => :mpi2)[:, 1]
     data[!, :w0mpi] = select(data, [:w0, :g5_folded] => ByRow(propagate_product) => :w0mpi)[:, 1]
+    data[!, :w0fps] = select(data, [:w0, :fps] => ByRow(propagate_product) => :w0fps)[:, 1]
     data[!, :w0mpcac] = select(data, [:w0, :m_pcac] => ByRow(propagate_product) => :w0mpcac)[:, 1]
     data[!, :w0mpi2] = select(data, [:w0mpi] => ByRow(propagate_square) => :w0mpi2)[:, 1]
     data[!, :w0mv] = select(data, [:w0, :gk_folded] => ByRow(propagate_product) => :w0mv)[:, 1]
