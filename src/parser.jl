@@ -382,8 +382,8 @@ function _extractor_all_matching_lines(regex, name, df)
     return filter([:name, :output] => (rowname, rowoutput) -> rowname == name && !isnothing(match(regex, rowoutput)), df).output
 end
 
-function drop_runs_with_no_confs(data, runs, run_metadata)
-    return runs[unique(data.runno), :], run_metadata[unique(data.runno), :]
+function drop_runs_with_no_confs(data, run_metadata)
+    return run_metadata[unique(data.runno), :]
 end
     
 
