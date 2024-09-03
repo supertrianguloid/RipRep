@@ -35,16 +35,19 @@ function load_output_file_as_dataframe(path::String)
     df = DataFrame(lineno=Int[], name=String[], loglevel=Int[], output=String[])
     line_regex = r"^\[([a-zA-Z_ ]+)\]\[(-?[0-9]+)\](.*)"
     lineno = 0
+    emptylines = 0
     for line in eachline(open(path))
-        lineno += 1
         if line != ""
+	    lineno += 1
             try
                 m = match(line_regex, line).captures
                 push!(df, [lineno, m[1], parse(Int, m[2]), m[3]])
             catch e
-                @error "Error parsing output file on line: " * line
+		@error "Error parsing output file on line: " * (line+emptylines)
                 @show lineno
             end
+	else
+            emptylines += 1
         end
     end
     return df
