@@ -375,8 +375,12 @@ end
 
 for line in keys(list_of_ensembles)
     @info "Processing " * line
-    analysis = process_ensemble(line, list_of_ensembles[line])
-    ensembles[line] = analysis
+    try
+        analysis = process_ensemble(line, list_of_ensembles[line])
+        ensembles[line] = analysis
+    catch e
+        @error "Error processing ensemble"
+    end
 end
 
 
