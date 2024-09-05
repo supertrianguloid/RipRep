@@ -307,6 +307,9 @@ function process_ensemble(line, ensemble_data)
                 fit_window_gk = get_fit_window(ensemble_data, "gk_fitwindow")
 		analysis[:ratio_vs_mpi_correlated] = fit_ratio_correlated(measurements, :g5_folded, :gk_folded, bs_g5, fit_window_g5, bs_gk, fit_window_gk)
             catch e
+                @error "Failed!"
+            end
+            
             if wf != nothing
                 @info "Wilson flow..."
                 try
