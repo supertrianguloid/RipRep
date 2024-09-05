@@ -281,16 +281,16 @@ function process_ensemble(line, ensemble_data)
                 end
             end
             try
-                @info "mv/mpi..."
+                @info "mv/mpi naive..."
                 bs, tune = get_binsize_tune(ensemble_data, "ratio_mv_mpi_binsize")
                 fit_window = get_fit_window(ensemble_data, "ratio_mv_mpi_fitwindow")
                 plot_window = get_plot_window(ensemble_data, "ratio_mv_mpi_plotwindow")
                 analysis[:effective_mass_ratio_mv_mpi] = bootstrap_effective_mass_ratio(measurements.analysis, :gk_folded, :g5_folded, bs)
-                analysis[:ratio_mv_mpi] = fit_effective_mass_ratio_naive(measurements.analysis, :gk_folded, :g5_folded, bs, fit_window)
+                analysis[:ratio_mv_mpi_naive] = fit_effective_mass_ratio_naive(measurements.analysis, :gk_folded, :g5_folded, bs, fit_window)
                 plot_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, bs, fit_window, plot_window, nboot=NBOOT_LARGE)
                 save_figure("effective_ratio_mv_mpi_fit")
-                analysis[:ratio_mv_mpi_binsize] = bs
-                analysis[:ratio_mv_mpi_fitwindow] = fit_window
+                analysis[:ratio_mv_mpi_naive_binsize] = bs
+                analysis[:ratio_mv_mpi_naive_fitwindow] = fit_window
                 if tune
                     tune_effective_mass_ratio_fit_naive(measurements, :gk_folded, :g5_folded, DEFAULT_TUNE_BINSIZES, fit_window, nboot=NBOOT_TUNING)
                     save_figure("ratio_mv_mpi_autocorrelations")
@@ -299,6 +299,14 @@ function process_ensemble(line, ensemble_data)
                 @error "Failed!"
                 @error e
             end
+            try
+                @info "mv/mpi correlated..."
+                bs_g5, tune_g5 = get_binsize_tune(ensemble_data, "g5_binsize")
+                fit_window_g5 = get_fit_window(ensemble_data, "g5_fitwindow")
+                bs_gk, tune_gk = get_binsize_tune(ensemble_data, "gk_binsize")
+                fit_window_gk = get_fit_window(ensemble_data, "gk_fitwindow")
+		analysis[:ratio_vs_mpi_correlated] = fit_ratio_correlated(measurements, :g5_folded, :gk_folded, bs_g5, fit_window_g5, bs_gk, fit_window_gk)
+            catch e
             if wf != nothing
                 @info "Wilson flow..."
                 try

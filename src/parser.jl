@@ -72,7 +72,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
 
     global_metadata[:reseeded_confs] = [run_to_first_conf(data, i) for i in runs_where_the_rng_is_reseeded]
 
-    if global_metadata[:reseeded_confs] != []
+    if length(global_metadata[:reseeded_confs]) > 1
         @warn "RNG reseeded until conf " * string(last(global_metadata[:reseeded_confs]))
     end
     
@@ -116,6 +116,9 @@ function split_run_dataframe_into_trajectories(runs)
     for run_number in eachindex(runs)
         run_df = runs[run_number]
         traj_boundaries = filter([:name, :output] => (name, output) -> name == "MAIN" && !isnothing(match(TRAJ_BEGIN_REGEX, output)), run_df, view=true).lineno
+        if length(traj_boundaries) == 0
+            continue
+        end
         if length(traj_boundaries) == 1
             push!(trajectories, run_df)
             continue
@@ -485,7 +488,7 @@ function load_ensemble(path::String; no_measurements = false)
     file_health_checks(output_df)
     @debug "Extracting runs..."
     output_df = add_run_number_to_output_df(output_df)
-    runs = split_output_dataframe_into_runs(output_df)
+    runs = split_output_dataframe_into_runs(output_df, keep_runs_without_trajectories=true)
     @debug "Extracting run metadata..."
     run_metadata = extract_run_metadata(runs)
     @debug "Checking runs health..."
