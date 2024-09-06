@@ -119,6 +119,15 @@ function process_ensemble(line, ensemble_data)
             end
 
             thermalise!(ens, therm)
+            try
+                analysis[:mvm] = mean(ens.analysis.mvm)
+            catch e
+            end
+            try
+                analysis[:time] = mean(ens.analysis.time)
+            catch e
+            end
+            
                 
             analysis[:therm] = first(ens.analysis).confno
             analysis[:acceptance] = mean(ens.analysis.accepted)
