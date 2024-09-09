@@ -67,6 +67,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
     end
 
     runs_where_the_integrator_changes = filter(:integrator => integrator -> integrator == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :integrator) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
+    runs_where_nmpi_changes = filter(:nmpi => nmpi -> nmpi == true, dropmissing(select(run_metadata, :run_number, names(run_metadata, :nmpi) .=>  (x -> [i == 1 ? missing : x[i] != x[i-1] for i in axes(x, 1)]), renamecols=false))).run_number
 
     runs_where_the_rng_is_reseeded = filter(:rng => rng -> rng != [], dropmissing(select(run_metadata, :run_number, names(run_metadata, :rng)))).run_number
 
@@ -77,6 +78,7 @@ function extract_global_metadata(path::String, output_df::DataFrame, data::DataF
     end
     
     global_metadata[:integrator_changes] = [run_to_first_conf(data, i) for i in runs_where_the_integrator_changes]
+    global_metadata[:nmpi_changes] = [run_to_first_conf(data, i) for i in runs_where_nmpi_changes]
                                                 
     global_metadata[:geometry] = only(union(run_metadata.geometry))
 
@@ -167,7 +169,7 @@ function file_health_checks(output_df::DataFrame)
 end
 
 function extract_run_metadata(runs)
-    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], action=Any[], csw=Float64[], rng=Any[], β=Float64[], m0=Float64[], mu=Float64[], geometry=OffsetArray[])
+    runs_metadata = DataFrame(finished_cleanly=Bool[], run_number=Int[], warnings=Any[], integrator=Any[], nmpi=Int64[],  action=Any[], csw=Float64[], rng=Any[], β=Float64[], m0=Float64[], mu=Float64[], geometry=OffsetArray[])
     for run_number in 1:length(runs)
         metadata = Dict()
         metadata[:finished_cleanly] = false
@@ -180,6 +182,7 @@ function extract_run_metadata(runs)
         metadata[:run_number] = run_number
         metadata[:warnings] = filter(row -> row.name == "WARNING", run).output
         metadata[:integrator] = filter(row -> row.name == "INTEGRATOR", run).output
+        metadata[:nmpi] = parse(Int64, only(_extractor_only_one_matching_line(r".*\[world_size: ([0-9]+)\]$", "SYSTEM", run, vital=true)))
         metadata[:action] = filter(row -> row.name == "ACTION", run).output
         metadata[:csw] = parse(Float64, only(_extractor_only_one_matching_line(r"^Coefficient: reset to csw = (.*)$", "CLOVER", run, vital=true)))
         metadata[:rng] = filter(row -> row.name == "SETUP_RANDOM", run).output
@@ -198,7 +201,7 @@ function extract_run_metadata(runs)
         metadata[:geometry] = OffsetVector(parse.(Int, split(only(_extractor_only_one_matching_line(r"^Global size is (.*)$", "GEOMETRY_INIT", run, vital=true, multiple_but_unique_okay=true)), "x")), 0:3)
         
         
-        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:mu], metadata[:geometry]]) 
+        push!(runs_metadata, [metadata[:finished_cleanly], metadata[:run_number], metadata[:warnings], metadata[:integrator], metadata[:nmpi], metadata[:action], metadata[:csw], metadata[:rng], metadata[:β], metadata[:m0], metadata[:mu], metadata[:geometry]]) 
     end
     return runs_metadata
 end

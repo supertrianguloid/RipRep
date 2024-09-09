@@ -118,7 +118,12 @@ function process_ensemble(line, ensemble_data)
                 measurements = meas
             end
 
-            thermalise!(ens, therm)
+            if therm < max(analysis[:nmpi_changes]...)
+                thermalise!(ens, max(analysis[:nmpi_changes]...))
+            else
+                thermalise!(ens, therm)
+            end
+
             try
                 analysis[:mvm] = mean(ens.analysis.mvm)
             catch e
@@ -128,6 +133,7 @@ function process_ensemble(line, ensemble_data)
             catch e
             end
             
+            thermalise!(ens, therm)
                 
             analysis[:therm] = first(ens.analysis).confno
             analysis[:acceptance] = mean(ens.analysis.accepted)
