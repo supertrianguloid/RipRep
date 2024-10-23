@@ -59,8 +59,9 @@ end
 
 function process_ensemble(line, ensemble_data)
     ensemble_path = OUTPUT_DIRECTORY * replace(line, "/" => "_")[2:end] * "/"
-    ensure_directory_exists(ensemble_path)
-    with_logger(FileLogger(ensemble_path * "analysis.log")) do
+#    ensure_directory_exists(ensemble_path)
+#    with_logger(FileLogger(ensemble_path * "analysis.log")) do
+    with_logger("analysis.log")) do
         wf = nothing
         try
             wf = ensemble_data["wf"]
@@ -70,14 +71,14 @@ function process_ensemble(line, ensemble_data)
         end
         function save_figure(name)
             if TIKZ
-                savefig(ensemble_path * name * ".tikz")
+                savefig(name * ".tikz")
 
                 s = read(open(ensemble_path * name * ".tikz"), String)
-                open(ensemble_path * name * ".tex", "w") do f
+                open(name * ".tex", "w") do f
                     write(f, Plots.pgfx_preamble() * "\n \\begin{document} \n " * s * "\n \\end{document} \n")
                 end
             else
-                savefig(ensemble_path * name * ".pdf")
+                savefig(name * ".pdf")
             end
             
         end
