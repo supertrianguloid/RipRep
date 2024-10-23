@@ -134,6 +134,15 @@ function process_ensemble(line, ensemble_data)
             end
             
             thermalise!(ens, therm)
+
+            try
+                @info "Plotting plaquette thermalised..."
+                plot_plaquette(ens)
+                save_figure("plaquette_therm")
+            catch e
+                @error "Failed!"
+                @error e
+            end
                 
             analysis[:therm] = first(ens.analysis).confno
             analysis[:acceptance] = mean(ens.analysis.accepted)
