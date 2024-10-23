@@ -17,7 +17,7 @@ ENV["GKSwstype"]="nul"
 
 #RIPREP_COMMIT = read(`git rev-parse --short HEAD`, String)
 
-OUTPUT_DIRECTORY = "/home/lbowes/ANALYSIS/" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
+OUTPUT_DIRECTORY = "./" * Dates.format(Dates.now(), "yyyy_mm_dd_HH_MM_SS") * "/"
 DEFAULT_BINSIZE = 10
 NO_FIT_POINTS = 4
 DEFAULT_TUNE_BINSIZES = collect(1:6:80)
