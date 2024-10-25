@@ -388,9 +388,9 @@ function process_ensemble(line, ensemble_data)
                 end
             end
         end
-        YAML.write_file(ensemble_path * "analysis.yml", analysis)
+        YAML.write_file(OUTPUT_DIRECTORY * "analysis.yml", analysis)
         if contains_nans
-            touch(ensemble_path * "CONTAINS_NANS")
+            touch(OUTPUT_DIRECTORY * "CONTAINS_NANS")
         end
         return analysis
         
