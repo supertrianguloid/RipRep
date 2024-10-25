@@ -147,7 +147,7 @@ function process_ensemble(line, ensemble_data)
                 
             analysis[:therm] = first(ens.analysis).confno
             analysis[:acceptance] = mean(ens.analysis.accepted)
-            corrs = [:g5_folded, :gk_folded, :id_folded]
+            corrs = [:g5_folded, :gk_folded, :g5gk_folded, :id_folded]
             T = ens.global_metadata[:geometry][0]
             L = ens.global_metadata[:geometry][1]
             T_middle = T ÷ 2
