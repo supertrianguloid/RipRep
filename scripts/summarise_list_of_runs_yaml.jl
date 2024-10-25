@@ -68,6 +68,7 @@ function process_ensemble(line, ensemble_data)
             wf = load_wilsonflow(wf)
             @info "Successfully loaded Wilson flow data"
         catch e
+            @error e
         end
         function save_figure(name)
             if TIKZ
@@ -118,8 +119,8 @@ function process_ensemble(line, ensemble_data)
                 thermalise!(meas, therm)
                 measurements = meas
             end
-
-            if therm < max(analysis[:nmpi_changes]...)
+            @info analysis
+	    if length(analysis[:nmpi_changes]) > 1 && therm < max(analysis[:nmpi_changes]...)
                 thermalise!(ens, max(analysis[:nmpi_changes]...))
             else
                 thermalise!(ens, therm)
@@ -135,6 +136,7 @@ function process_ensemble(line, ensemble_data)
             end
             
             thermalise!(ens, therm)
+            @info analysis
 
             try
                 @info "Plotting plaquette thermalised..."
@@ -144,6 +146,7 @@ function process_ensemble(line, ensemble_data)
                 @error "Failed!"
                 @error e
             end
+            @info analysis
                 
             analysis[:therm] = first(ens.analysis).confno
             analysis[:acceptance] = mean(ens.analysis.accepted)
@@ -405,6 +408,7 @@ for line in keys(list_of_ensembles)
         ensembles[line] = analysis
     catch e
         @error "Error processing ensemble"
+        @error e
     end
 end
 
