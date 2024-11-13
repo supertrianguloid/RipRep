@@ -305,7 +305,7 @@ function process_ensemble(line, ensemble_data)
                     end
 		    a = []
 		    for i in 1:(last(fit_window) - 1)
-			    push!(a, fit_effective_mass(analysis, corr, bs, i:last(fit_window), nboot = 100))
+			    push!(a, fit_effective_mass(measurements, corr, bs, i:last(fit_window), nboot = 100))
 		    end
 		    plot(1:(last(fit_window) - 1), hcat(a...)[1,:], yerr= hcat(a...)[2,:])
                     save_figure("effective_mass_" * String(corr) * "_fit_t1_slide")
