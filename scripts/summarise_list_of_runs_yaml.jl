@@ -303,6 +303,12 @@ function process_ensemble(line, ensemble_data)
                         tune_effective_mass_fit(measurements, corr, DEFAULT_TUNE_BINSIZES, fit_window, nboot = NBOOT_TUNING)
                         save_figure(String(corr)*"_autocorrelations")
                     end
+		    a = []
+		    for i in 1:(last(fit_window) - 1)
+			    push!(a, fit_effective_mass(analysis, corr, bs, i:last(fit_window), nboot = 100))
+		    end
+		    plot(1:(last(fit_window) - 1), hcat(a...)[1,:], yerr= hcat(a...)[2,:])
+                    save_figure("effective_mass_" * String(corr) * "_fit_t1_slide")
                 catch e
                     @error "Failed!"
                     @error e
